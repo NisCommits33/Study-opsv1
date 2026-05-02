@@ -10,7 +10,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useAssistantStore, Message } from '@/store/useAssistantStore'
-import { chatAction } from '@/app/actions/ai.actions'
+import { getAssistantResponseAction } from '@/app/actions/ai.actions'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Send, X, Bot, Sparkles, Trash2 } from 'lucide-react'
@@ -41,8 +41,8 @@ export function AssistantSidebar() {
     setLoading(true)
 
     try {
-      const response = await chatAction([...messages, userMessage])
-      
+      const response = await getAssistantResponseAction([...messages, userMessage])
+
       const assistantMessage: Message = {
         role: 'assistant',
         content: response.text,
@@ -94,14 +94,14 @@ export function AssistantSidebar() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button 
+                <button
                   onClick={clearChat}
                   className="p-2.5 rounded-xl hover:bg-muted text-muted-foreground hover:text-rose transition-colors"
                   title="Clear Chat"
                 >
                   <Trash2 className="w-5 h-5" />
                 </button>
-                <button 
+                <button
                   onClick={toggleSidebar}
                   className="p-2.5 rounded-xl hover:bg-muted text-foreground transition-colors"
                 >
@@ -111,7 +111,7 @@ export function AssistantSidebar() {
             </div>
 
             {/* Chat History */}
-            <div 
+            <div
               ref={scrollRef}
               className="flex-1 overflow-y-auto p-8 space-y-8 scrollbar-hide"
             >
@@ -125,9 +125,9 @@ export function AssistantSidebar() {
                   </p>
                 </div>
               )}
-              
+
               {messages.map((msg, i) => (
-                <motion.div 
+                <motion.div
                   key={i}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -144,8 +144,8 @@ export function AssistantSidebar() {
                   </div>
                   <div className={cn(
                     "p-4 text-sm leading-relaxed",
-                    msg.role === 'user' 
-                      ? "bg-primary/10 text-primary border border-primary/20 rounded-2xl rounded-tr-none" 
+                    msg.role === 'user'
+                      ? "bg-primary/10 text-primary border border-primary/20 rounded-2xl rounded-tr-none"
                       : "bg-muted/30 border border-border text-foreground rounded-2xl rounded-tl-none border-l-2 border-l-teal"
                   )}>
                     {msg.content}

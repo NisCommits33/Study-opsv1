@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { deleteExamAction } from '@/app/actions/exam.actions'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 type Exam = {
   id: string
@@ -141,14 +142,16 @@ export default function ExamsPage() {
         )}
 
         {exams.length === 0 ? (
-          <div className="py-32 text-center border-2 border-dashed border-border rounded-[3rem] bg-muted/5 space-y-6">
-            <BookOpen className="w-16 h-16 text-muted-foreground/20 mx-auto" />
-            <div className="space-y-1">
-              <h2 className="text-xl font-bold text-foreground/80">Your Library is Empty</h2>
-              <p className="text-xs text-muted-foreground">Add an exam to begin structuring your study materials.</p>
-            </div>
-            <button onClick={() => setShowAdd(true)} className="text-primary text-[10px] font-bold uppercase tracking-widest hover:underline">Create First Knowledge Base</button>
-          </div>
+          <EmptyState 
+            icon={BookOpen}
+            title="Your Library is Empty"
+            description="Add an exam to begin structuring your study materials and building your bilingual knowledge base."
+            action={{
+              label: "Create First Knowledge Base",
+              onClick: () => setShowAdd(true),
+              icon: Plus
+            }}
+          />
         ) : (
           view === 'grid' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

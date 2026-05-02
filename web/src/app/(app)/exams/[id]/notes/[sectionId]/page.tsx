@@ -38,6 +38,8 @@ import { toast } from 'sonner'
 import { ingestChapterContentAction } from '@/app/actions/exam.actions'
 import { cn } from '@/lib/utils'
 import { AIToolbar } from '@/components/AIToolbar'
+import { Classroom } from '@/components/studyops/Classroom'
+import { QuizEngine } from '@/components/studyops/QuizEngine'
 
 // ─── Components ──────────────────────────────────────────────
 function AIResultModal({ content, onClose }: { content: string, onClose: () => void }) {
@@ -115,12 +117,11 @@ export default function NotesEditor() {
   const [note, setNote] = useState<Note | null>(null)
   const [progress, setProgress] = useState<any>(null)
   
-  const [mode, setMode] = useState<'read' | 'edit'>('read')
+  const [activeTab, setActiveTab] = useState<'read' | 'edit' | 'lesson' | 'quiz'>('read')
   const [lang, setLang] = useState<'en' | 'np'>('en')
   const [editContent, setEditContent] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const [confidence, setConfidence] = useState(0)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [aiResult, setAiResult] = useState<string | null>(null)
 
@@ -159,10 +160,22 @@ export default function NotesEditor() {
     const { data: progressData } = await supabase.from('exam_progress').select('*').eq('section_id', sectionId).single()
     if (progressData) {
       setProgress(progressData)
-      setConfidence(progressData.confidence || 0)
+    } else {
+      setProgress(null)
     }
     setLoading(false)
   }
+
+  // Auto-save logic
+  useEffect(() => {
+    if (!hasUnsavedChanges || activeTab !== 'edit') return
+
+    const timer = setTimeout(() => {
+      saveNotes()
+    }, 2000)
+
+    return () => clearTimeout(timer)
+  }, [editContent])
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -184,7 +197,7 @@ export default function NotesEditor() {
 
       toast.success('Chapter content ingested and formatted!')
       fetchAll()
-      setMode('read')
+      setActiveTab('read')
     } catch (err: any) {
       toast.error('Ingestion failed: ' + err.message)
     } finally {
@@ -249,29 +262,37 @@ export default function NotesEditor() {
 
       {/* ── Sidebar ── */}
       <aside className={cn(
-        "fixed inset-y-0 left-0 z-50 w-72 border-r border-border bg-card lg:static lg:bg-card flex flex-col shrink-0 transition-transform duration-300 lg:translate-x-0",
-        sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        "fixed inset-y-0 left-0 z-50 w-72 border-r border-border bg-card flex flex-col shrink-0 transition-all duration-300 ease-in-out",
+        sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0 lg:w-0 lg:border-none lg:overflow-hidden"
       )}>
-        <div className="p-6 border-b border-border flex items-center justify-between">
-          <div>
-            <Link href={`/exams/${examId}`} className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground hover:text-primary transition-colors uppercase tracking-widest mb-2">
-              <ArrowLeft className="w-3 h-3" /> Overview
-            </Link>
-            <h2 className="text-sm font-bold truncate max-w-[180px] text-foreground">{exam?.name}</h2>
+        <div className="w-72 flex flex-col h-full"> {/* Inner wrapper to keep width constant while aside collapses */}
+          <div className="p-6 border-b border-border flex items-center justify-between">
+            <div>
+              <Link href={`/exams/${examId}`} className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground hover:text-primary transition-colors uppercase tracking-widest mb-2">
+                <ArrowLeft className="w-3 h-3" /> Overview
+              </Link>
+              <h2 className="text-sm font-bold truncate max-w-[180px] text-foreground">{exam?.name}</h2>
+            </div>
+            <button onClick={() => setSidebarOpen(false)} className="p-2 hover:bg-muted rounded-lg text-muted-foreground"><X className="w-4 h-4" /></button>
           </div>
-          <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-2 hover:bg-muted rounded-lg text-muted-foreground"><X className="w-4 h-4" /></button>
+          <nav className="flex-1 overflow-y-auto p-4 space-y-1">
+            {sections.map((s, i) => {
+              const isCurrent = s.id === sectionId
+              return (
+                <Link key={s.id} href={`/exams/${examId}/notes/${s.id}`} onClick={() => window.innerWidth < 1024 && setSidebarOpen(false)} className={cn(
+                  "flex items-center justify-between px-4 py-2.5 rounded-xl text-xs transition-all border",
+                  isCurrent ? "bg-primary/10 text-primary border-primary/20 font-bold" : "text-muted-foreground hover:text-foreground hover:bg-muted border-transparent"
+                )}>
+                  <div className="flex items-center gap-3 overflow-hidden">
+                    <span className={cn("w-6 h-6 rounded-lg shrink-0 flex items-center justify-center text-[10px]", isCurrent ? "bg-primary text-primary-foreground" : "bg-muted")}>{s.section_number || i+1}</span>
+                    <span className="truncate">{s.title?.en || (typeof s.title === 'string' ? s.title : '')}</span>
+                  </div>
+                  {isCurrent && progress?.status === 'done' && <CheckCircle2 className="w-3 h-3 text-emerald-500" />}
+                </Link>
+              )
+            })}
+          </nav>
         </div>
-        <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-          {sections.map((s, i) => (
-            <Link key={s.id} href={`/exams/${examId}/notes/${s.id}`} onClick={() => window.innerWidth < 1024 && setSidebarOpen(false)} className={cn(
-              "flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs transition-all",
-              s.id === sectionId ? "bg-primary/10 text-primary border border-primary/20 font-bold" : "text-muted-foreground hover:text-foreground hover:bg-muted border border-transparent"
-            )}>
-              <span className={cn("w-6 h-6 rounded-lg flex items-center justify-center text-[10px]", s.id === sectionId ? "bg-primary text-primary-foreground" : "bg-muted")}>{s.section_number || i+1}</span>
-              <span className="truncate">{s.title?.en || (typeof s.title === 'string' ? s.title : '')}</span>
-            </Link>
-          ))}
-        </nav>
       </aside>
 
       {/* ── Main Content ── */}
@@ -279,22 +300,37 @@ export default function NotesEditor() {
         
         {/* Toolbar */}
         <header className="h-16 flex items-center justify-between px-4 lg:px-8 border-b border-border bg-background/50 backdrop-blur-md z-10">
-          <div className="flex items-center gap-2 lg:gap-4">
+          <div className="flex items-center gap-4">
             <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 hover:bg-muted rounded-lg text-muted-foreground"><BookOpen className="w-4 h-4" /></button>
-            <div className="hidden sm:flex items-center gap-2 text-[10px] font-mono text-muted-foreground tracking-widest uppercase">
-              <span className="truncate max-w-[100px]">{exam?.name}</span>
-              <ChevronRight className="w-3 h-3" />
-              <span className="text-foreground">Ch. {currentSection?.section_number || currentIndex+1}</span>
-            </div>
+            
+            {/* Main Tabs */}
+            <nav className="flex bg-muted/50 p-1 rounded-xl border border-border">
+              {[
+                { id: 'read', label: 'READ', icon: Eye },
+                { id: 'edit', label: 'EDIT', icon: Edit3 },
+                { id: 'lesson', label: 'LESSON', icon: Sparkles },
+                { id: 'quiz', label: 'QUIZ', icon: Star },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-1.5 rounded-lg text-[10px] font-bold transition-all uppercase tracking-widest",
+                    activeTab === tab.id 
+                      ? "bg-primary text-primary-foreground shadow-lg" 
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <tab.icon className="w-3 h-3" />
+                  <span className="hidden md:inline">{tab.label}</span>
+                </button>
+              ))}
+            </nav>
           </div>
 
-          <div className="flex items-center gap-1.5 lg:gap-2">
-            <button onClick={() => setLang(lang === 'en' ? 'np' : 'en')} className="flex items-center gap-2 px-2 lg:px-3 py-1.5 rounded-lg bg-muted border border-border text-[9px] lg:text-[10px] font-bold uppercase tracking-widest hover:bg-muted/80 transition-all whitespace-nowrap text-foreground">
-              <Languages className="w-3 h-3 text-primary" /> {lang === 'en' ? 'English' : 'नेपाली'}
-            </button>
-            <button onClick={() => setMode(mode === 'read' ? 'edit' : 'read')} className="flex items-center gap-2 px-2 lg:px-3 py-1.5 rounded-lg bg-muted border border-border text-[9px] lg:text-[10px] font-bold uppercase tracking-widest hover:bg-muted/80 transition-all whitespace-nowrap text-foreground">
-              {mode === 'read' ? <Edit3 className="w-3 h-3 text-primary" /> : <Eye className="w-3 h-3 text-primary" />}
-              <span className="hidden sm:inline">{mode === 'read' ? 'Edit' : 'Read'}</span>
+          <div className="flex items-center gap-3">
+            <button onClick={() => setLang(lang === 'en' ? 'np' : 'en')} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted border border-border text-[10px] font-bold uppercase tracking-widest hover:bg-muted/80 transition-all text-foreground">
+              <Languages className="w-3.5 h-3.5 text-primary" /> {lang === 'en' ? 'EN' : 'NP'}
             </button>
           </div>
         </header>
@@ -317,7 +353,7 @@ export default function NotesEditor() {
             </div>
 
             {/* Ingest Toolbar (Only if no content) */}
-            {(!note || !note.content?.[lang]) && mode === 'read' && (
+            {(!note || !note.content?.[lang]) && activeTab === 'read' && (
               <div className="p-8 lg:p-10 border-2 border-dashed border-border rounded-3xl text-center space-y-6 bg-card shadow-sm">
                 <div className="w-12 h-12 lg:w-16 lg:h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
                   <Sparkles className="w-6 h-6 lg:w-8 lg:h-8 text-primary" />
@@ -331,7 +367,7 @@ export default function NotesEditor() {
                     {ingesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileUp className="w-4 h-4 text-primary" />}
                     Upload
                   </button>
-                  <button onClick={() => setMode('edit')} className="flex items-center justify-center gap-2 px-6 py-3 bg-muted hover:bg-muted/80 border border-border rounded-2xl text-xs font-bold transition-all text-foreground">
+                  <button onClick={() => setActiveTab('edit')} className="flex items-center justify-center gap-2 px-6 py-3 bg-muted hover:bg-muted/80 border border-border rounded-2xl text-xs font-bold transition-all text-foreground">
                     <Type className="w-4 h-4 text-primary" />
                     Paste
                   </button>
@@ -341,27 +377,60 @@ export default function NotesEditor() {
             )}
 
             {/* Reader / Editor */}
-            <div className="prose dark:prose-invert prose-headings:font-bold prose-h2:text-xl lg:prose-h2:text-2xl prose-p:text-foreground/80 prose-p:leading-relaxed max-w-none pb-24 text-foreground">
-              {mode === 'read' ? (
-                <div className="animate-in fade-in duration-500">
+            <div className="pb-24">
+              {activeTab === 'read' ? (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 prose dark:prose-invert prose-headings:font-bold prose-h2:text-xl lg:prose-h2:text-2xl prose-p:text-foreground/80 prose-p:leading-relaxed max-w-none text-foreground">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {note?.content?.[lang] || ""}
                   </ReactMarkdown>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center bg-card p-3 rounded-t-2xl border border-border shadow-sm">
-                    <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">{lang === 'en' ? 'Editing English' : 'सम्पादन: नेपाली'}</span>
-                    <button onClick={saveNotes} disabled={saving} className="flex items-center gap-2 px-4 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-bold transition-all hover:scale-105 active:scale-95 disabled:opacity-50">
+              ) : activeTab === 'edit' ? (
+                <div className="space-y-4 animate-in fade-in duration-300">
+                  <div className="flex justify-between items-center bg-card p-3 px-5 rounded-2xl border border-border shadow-sm">
+                    <div className="flex items-center gap-4">
+                      <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
+                        {lang === 'en' ? 'English Source' : 'Nepali Translation'}
+                      </span>
+                      {hasUnsavedChanges && (
+                        <span className="text-[9px] font-mono text-primary animate-pulse uppercase tracking-tighter">Unsaved Changes...</span>
+                      )}
+                    </div>
+                    <button onClick={saveNotes} disabled={saving} className="flex items-center gap-2 px-4 py-1.5 bg-primary text-primary-foreground rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all hover:scale-105 active:scale-95 disabled:opacity-50 shadow-lg shadow-primary/10">
                       {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                      <span className="hidden sm:inline">{saving ? 'Saving...' : 'Save'}</span>
+                      {saving ? 'Saving' : 'Save'}
                     </button>
                   </div>
                   <textarea 
                     value={editContent} 
                     onChange={(e) => { setEditContent(e.target.value); setHasUnsavedChanges(true) }}
-                    className="w-full min-h-[50vh] lg:min-h-[60vh] p-4 lg:p-8 bg-card border border-t-0 border-border rounded-b-2xl text-sm leading-relaxed focus:outline-none focus:ring-1 focus:ring-primary/20 transition-all font-mono placeholder:text-muted-foreground/30 text-foreground"
+                    className="w-full min-h-[60vh] p-8 bg-card border border-border rounded-[2rem] text-base leading-relaxed focus:outline-none focus:ring-1 focus:ring-primary/20 transition-all font-mono placeholder:text-muted-foreground/30 text-foreground shadow-sm"
                     placeholder="Write in Markdown..."
+                  />
+                </div>
+              ) : activeTab === 'lesson' ? (
+                <div className="h-[70vh]">
+                  <Classroom 
+                    topic={{ 
+                      title: currentSection?.title?.[lang] || currentSection?.title?.en || "Lesson",
+                      content: note?.content?.[lang] || "Start by adding some content to this chapter."
+                    }}
+                    onComplete={() => {
+                      toast.success("Lesson Complete! Energy rating logged.")
+                      toggleComplete()
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="h-[70vh]">
+                  <QuizEngine 
+                    topic={{ 
+                      title: currentSection?.title?.[lang] || currentSection?.title?.en || "Quiz",
+                      content: note?.content?.[lang] || ""
+                    }}
+                    onComplete={(score) => {
+                      toast.success(`Quiz Complete! Scored ${score}.`)
+                      toggleComplete()
+                    }}
                   />
                 </div>
               )}
@@ -370,7 +439,7 @@ export default function NotesEditor() {
         </div>
 
         {/* AI Selection Toolbar */}
-        {mode === 'read' && note?.content?.[lang] && (
+        {activeTab === 'read' && note?.content?.[lang] && (
           <AIToolbar onInsert={(text: string) => setAiResult(text)} />
         )}
 

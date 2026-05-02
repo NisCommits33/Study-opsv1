@@ -30,23 +30,23 @@ This document outlines the phased development of the Study Ops platform, broken 
 
 ### 🏃 Sprint 3: The Knowledge Base — MVP (Steps 13-18)
 **Goal:** Core study functionality for the May exams.
-- [ ] **Step 13:** Exam Module (Syllabus PDF upload, chapter generation)
-- [ ] **Step 14:** Notes Editor (Bilingual markdown, reader, language toggle)
-- [ ] **Step 15:** OpenMAIC Lesson Tab (Wire component, onComplete callback)
-- [ ] **Step 16:** OpenMAIC Quiz Engine (Wire to section completion)
-- [ ] **Step 17:** Past Paper Upload (Extract questions, frequency analysis)
-- [ ] **Step 18:** Error Boundaries & Graceful Handling
-- **🚀 MVP COMPLETE**
+- [x] **Step 13:** Exam Module (Syllabus PDF upload, chapter generation)
+- [x] **Step 14:** Notes Editor (Bilingual markdown, reader, language toggle)
+- [x] **Step 15:** OpenMAIC Lesson Tab (Wire component, onComplete callback)
+- [x] **Step 16:** OpenMAIC Quiz Engine (Wire to section completion)
+- [x] **Step 17:** Past Paper Upload (Extract questions, frequency analysis)
+- [x] **Step 18:** Error Boundaries & Graceful Handling
+- [x] **🚀 MVP COMPLETE**
 
 ---
 
 ### 🏃 Sprint 4: Intelligence & Accountability (Steps 19-25)
 **Goal:** Smart planning and active reminders.
-- [ ] **Step 19:** Interview Prep (Text mode, STAR builder, question bank)
+- [x] **Step 19:** Interview Prep (Text mode, STAR builder, question bank)
 - [ ] **Step 20:** Voice Mode (Groq Whisper, Nepali support)
 - [ ] **Step 21:** Weak Spot Tracker (Cross-module persistence)
-- [ ] **Step 22:** AI Daily Planner + Risk Assessor
-- [ ] **Step 23:** Procrastination Detector + Push Notifications
+- [x] **Step 22:** AI Daily Planner + Risk Assessor
+- [x] **Step 23:** Procrastination Detector + Push Notifications
 - [ ] **Step 24:** Session Analyser (Weekly habit insights)
 - [ ] **Step 25:** Exam Template System (Publish/Clone structures)
 

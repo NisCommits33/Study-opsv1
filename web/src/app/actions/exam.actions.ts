@@ -476,6 +476,164 @@ export async function deleteExamAction(examId: string) {
   }
 }
 
+/**
+ * Extracts questions from a past paper PDF and maps them to chapters.
+ */
+export async function extractQuestionsFromPaperAction(examId: string, storagePath: string, year: string) {
+  const cookieStore = await cookies()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll() },
+        setAll(cookiesToSet) { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) },
+      },
+    }
+  )
+
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error("Unauthorized")
+
+    // 1. Download and Parse
+    const { data: fileData, error: downloadError } = await supabase.storage.from('study-materials').download(storagePath)
+    if (downloadError || !fileData) throw new Error(`Failed to download: ${downloadError?.message}`)
+
+    const { PDFParse } = await import('pdf-parse')
+    const arrayBuf = await fileData.arrayBuffer()
+    const parser = new PDFParse({ data: new Uint8Array(arrayBuf) })
+    const textResult = await parser.getText()
+    const text = textResult.text
+    await parser.destroy()
+
+    if (!text || text.trim().length < 100) throw new Error("Text extraction failed")
+
+    // 2. Get existing sections for mapping
+    const { data: sections } = await supabase.from('exam_sections').select('id, section_number, title').eq('exam_id', examId)
+    const sectionContext = sections?.map(s => `ID: ${s.id}, Ch: ${s.section_number}, Title: ${s.title.en}`).join('\n')
+
+    // 3. AI Extraction
+    const prompt = `
+      You are an expert examiner. I will provide you with text from a past exam paper.
+      Your task is to extract every question and map it to one of the provided chapters.
+      
+      EXISTING CHAPTERS:
+      ${sectionContext}
+      
+      RULES:
+      1. Extract the full question text.
+      2. Identify the likely marks/weightage if mentioned.
+      3. Map the question to the MOST RELEVANT Chapter ID from the list above.
+      4. Return ONLY a JSON array in this format:
+         [
+           {
+             "question": { "en": "Question text...", "np": "Optional translation" },
+             "section_id": "MATCHING_CHAPTER_ID",
+             "marks": 5,
+             "type": "short"
+           }
+         ]
+      5. If a question doesn't match any chapter, use null for section_id.
+      
+      PAST PAPER TEXT:
+      ${text.substring(0, 8000)}
+    `
+
+    const aiResponse = await chatAction([{ role: 'user', content: prompt }], 'complex', true)
+    
+    let questions;
+    try {
+      const start = aiResponse.text.indexOf('[')
+      const end = aiResponse.text.lastIndexOf(']')
+      if (start === -1 || end === -1) throw new Error("No JSON array found")
+      questions = JSON.parse(aiResponse.text.substring(start, end + 1))
+    } catch (err) {
+      throw new Error("AI failed to extract questions in valid JSON format.")
+    }
+
+    // 4. Save to Database
+    const paperRecord = {
+      user_id: user.id,
+      exam_id: examId,
+      type: 'past_paper',
+      file_name: storagePath.split('/').pop(),
+      storage_path: storagePath,
+      year: year,
+      processing_status: 'done'
+    }
+    const { data: paper } = await supabase.from('uploaded_pdfs').insert(paperRecord).select().single()
+
+    const questionsToInsert = questions.map((q: any) => ({
+      user_id: user.id,
+      exam_id: examId,
+      section_id: q.section_id,
+      source_pdf_id: paper?.id,
+      question: q.question,
+      marks: q.marks,
+      type: q.type,
+      year: year,
+      source: 'past_paper'
+    }))
+
+    const { error: qError } = await supabase.from('question_bank').insert(questionsToInsert)
+    if (qError) throw qError
+
+    // 5. Update Frequency Stats
+    await analyzeFrequencyAction(examId)
+
+    return { success: true, count: questionsToInsert.length }
+  } catch (error: any) {
+    console.error('Past Paper Extraction Error:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Recalculates frequency stats for all chapters in an exam.
+ */
+export async function analyzeFrequencyAction(examId: string) {
+  const cookieStore = await cookies()
+  const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+    cookies: {
+      getAll() { return cookieStore.getAll() },
+      setAll(cookiesToSet) { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) },
+    },
+  })
+
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Unauthorized" }
+
+    // 1. Get total number of distinct years/papers uploaded
+    const { data: papers } = await supabase.from('uploaded_pdfs').select('year').eq('exam_id', examId).eq('type', 'past_paper')
+    const totalPapers = new Set(papers?.map(p => p.year)).size || 1
+
+    // 2. Get counts per section
+    const { data: sections } = await supabase.from('exam_sections').select('id').eq('exam_id', examId)
+    
+    for (const section of (sections || [])) {
+      const { count } = await supabase.from('question_bank').select('*', { count: 'exact', head: true }).eq('section_id', section.id)
+      
+      const frequency_percentage = ((count || 0) / totalPapers) * 100
+
+      await supabase.from('chapter_frequency').upsert({
+        user_id: user.id,
+        exam_id: examId,
+        section_id: section.id,
+        appearance_count: count || 0,
+        total_papers_analysed: totalPapers,
+        frequency_percentage: frequency_percentage,
+        last_computed_at: new Date().toISOString()
+      }, { onConflict: 'exam_id,section_id' })
+    }
+
+    return { success: true }
+  } catch (error: any) {
+    return { success: false, error: error.message }
+  }
+}
+
 
 
 

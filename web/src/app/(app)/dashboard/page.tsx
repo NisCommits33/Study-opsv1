@@ -25,44 +25,62 @@ import {
   Plus
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useRouter } from 'next/navigation'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 /**
  * Dashboard Component.
  */
 export default function Dashboard() {
+  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState<any>(null)
   const [shiftConfig, setShiftConfig] = useState<any>(null)
   const [currentShift, setCurrentShift] = useState<ShiftType | null>(null)
   const [mood, setMood] = useState<string>('focused')
 
+  const [deadlines, setDeadlines] = useState<any[]>([])
+  const [recommendations, setRecommendations] = useState<any[]>([])
+  const [overallRisk, setOverallRisk] = useState<number>(0)
+
   useEffect(() => {
     const fetchData = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
+      const [profileRes, shiftRes, deadRes, freqRes, progRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', user.id).single(),
+        supabase.from('shift_configs').select('*').eq('user_id', user.id).single(),
+        supabase.from('deadlines').select('*').eq('user_id', user.id).order('deadline_date', { ascending: true }),
+        supabase.from('chapter_frequency').select('*, section:section_id(title, section_number)'),
+        supabase.from('exam_progress').select('*').eq('user_id', user.id)
+      ])
 
-      const { data: shiftData } = await supabase
-        .from('shift_configs')
-        .select('*')
-        .eq('user_id', user.id)
-        .single()
+      setProfile(profileRes.data)
+      setShiftConfig(shiftRes.data)
+      setDeadlines(deadRes.data || [])
 
-      setProfile(profileData)
-      setShiftConfig(shiftData)
-
-      if (shiftData) {
+      if (shiftRes.data) {
         const shift = getShiftForDate(
           new Date(),
-          new Date(shiftData.cycle_start_date),
-          shiftData.first_shift_type as ShiftType
+          new Date(shiftRes.data.cycle_start_date),
+          shiftRes.data.first_shift_type as ShiftType
         )
         setCurrentShift(shift)
+      }
+
+      // Calculate Risks & Recommendations
+      if (freqRes.data) {
+        const processed = freqRes.data.map(f => {
+          const progress = progRes.data?.find(p => p.section_id === f.section_id)
+          const confidence = progress?.status === 'done' ? 1.0 : 0.2 // Mock confidence logic
+          const risk = f.frequency_count * (1.1 - confidence)
+          return { ...f, risk, confidence }
+        }).sort((a, b) => b.risk - a.risk)
+
+        setRecommendations(processed.slice(0, 3))
+        const avgRisk = processed.reduce((acc, curr) => acc + curr.risk, 0) / (processed.length || 1)
+        setOverallRisk(Math.min(100, Math.round(avgRisk * 10)))
       }
       
       setLoading(false)
@@ -162,53 +180,69 @@ export default function Dashboard() {
       {/* Main Focus Area */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Today's Plan */}
-        <div className="lg:col-span-2 bg-card border border-border rounded-[2.5rem] p-10 space-y-8 relative overflow-hidden group shadow-sm">
-          <div className="absolute top-0 right-0 p-10 opacity-5 group-hover:opacity-10 transition-opacity">
-            <Sparkles className="w-32 h-32 text-primary" />
-          </div>
-          
-          <div className="flex items-center justify-between relative z-10">
-            <h2 className="text-2xl font-display flex items-center gap-3 text-foreground">
-              <Target className="w-6 h-6 text-primary" />
-              Today's Focus Plan
-            </h2>
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">STUDY RISK</div>
-                <div className="text-sm font-bold text-rose">HIGH</div>
+        <div className="lg:col-span-2 bg-card border border-border rounded-[2.5rem] p-10 relative overflow-hidden group shadow-sm flex flex-col">
+          {!shiftConfig ? (
+            <EmptyState 
+              icon={Zap}
+              title="Intelligence Engine Inactive"
+              description="Configure your work shifts and study preferences to unlock automated planning and focus sessions."
+              action={{
+                label: "Setup Study Cycle",
+                onClick: () => router.push('/onboarding'),
+                icon: Plus
+              }}
+              className="border-none bg-transparent min-h-[300px]"
+            />
+          ) : (
+            <>
+              <div className="absolute top-0 right-0 p-10 opacity-5 group-hover:opacity-10 transition-opacity">
+                <Sparkles className="w-32 h-32 text-primary" />
               </div>
-              <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden">
-                <div className="w-4/5 h-full bg-rose shadow-[0_0_10px_#F45E6B]" />
+              
+              <div className="flex items-center justify-between relative z-10 mb-8">
+                <h2 className="text-2xl font-display flex items-center gap-3 text-foreground">
+                  <Target className="w-6 h-6 text-primary" />
+                  Today's Focus Plan
+                </h2>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">STUDY RISK</div>
+                    <div className="text-sm font-bold text-rose">HIGH</div>
+                  </div>
+                  <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div className="w-4/5 h-full bg-rose shadow-[0_0_10px_#F45E6B]" />
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
 
-          <div className="space-y-4 relative z-10">
-            <PlanItem 
-              id="01" 
-              title="Aviation Fire Physics" 
-              sub="3 Sections · 45 mins" 
-              status="current" 
-            />
-            <PlanItem 
-              id="02" 
-              title="Nepal Constitution" 
-              sub="Fundamental Rights · 30 mins" 
-              status="pending" 
-            />
-            <PlanItem 
-              id="03" 
-              title="Big Data Concepts" 
-              sub="HDFS Replication · 15 mins" 
-              status="pending" 
-            />
-          </div>
+              <div className="space-y-4 relative z-10 flex-1">
+                <PlanItem 
+                  id="01" 
+                  title="Aviation Fire Physics" 
+                  sub="3 Sections · 45 mins" 
+                  status="current" 
+                />
+                <PlanItem 
+                  id="02" 
+                  title="Nepal Constitution" 
+                  sub="Fundamental Rights · 30 mins" 
+                  status="pending" 
+                />
+                <PlanItem 
+                  id="03" 
+                  title="Big Data Concepts" 
+                  sub="HDFS Replication · 15 mins" 
+                  status="pending" 
+                />
+              </div>
 
-          <div className="pt-6 relative z-10">
-            <button className="w-full py-4 bg-primary text-primary-foreground font-bold rounded-2xl shadow-xl shadow-primary/10 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-              Start Focused Session <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
+              <div className="pt-8 relative z-10">
+                <button className="w-full py-4 bg-primary text-primary-foreground font-bold rounded-2xl shadow-xl shadow-primary/10 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                  Start Focused Session <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+            </>
+          )}
         </div>
 
         {/* AI Insight Sidebar */}

@@ -29,7 +29,9 @@ import {
   Settings,
   Sparkles,
   Menu,
-  X
+  X,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
 
 const navItems = [
@@ -53,9 +55,10 @@ import { ThemeToggle } from '@/components/ThemeToggle'
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(false)
   const sections = ['MAIN', 'STUDY', 'TOOLS']
 
-  // Close sidebar on navigation
+  // Close sidebar on navigation (mobile)
   useEffect(() => {
     setSidebarOpen(false)
   }, [pathname])
@@ -91,21 +94,32 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* ── Sidebar Navigation ── */}
       <aside className={cn(
-        "fixed inset-y-0 left-0 z-[80] w-72 border-r border-border p-8 flex flex-col gap-8 bg-card transition-transform duration-300 ease-out",
+        "fixed inset-y-0 left-0 z-[80] border-r border-border flex flex-col bg-card transition-all duration-300 ease-in-out",
         "lg:static lg:bg-transparent lg:h-screen lg:sticky lg:top-0 lg:overflow-y-auto lg:z-auto lg:translate-x-0",
-        sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+        isCollapsed ? "w-24 px-4 py-8" : "w-72 p-8"
       )}>
-        <div className="hidden lg:flex items-center justify-between">
-          <Logo size="sm" />
-          <ThemeToggle />
+        <div className="hidden lg:flex items-center justify-between mb-8">
+          {!isCollapsed && <Logo size="sm" />}
+          <div className="flex items-center gap-2">
+            {!isCollapsed && <ThemeToggle />}
+            <button 
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="p-2 hover:bg-muted rounded-xl transition-all text-muted-foreground hover:text-foreground"
+            >
+              {isCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+            </button>
+          </div>
         </div>
         
         <nav className="flex flex-col gap-8">
           {sections.map((section) => (
             <div key={section} className="space-y-2">
-              <h3 className="font-mono text-[9px] text-muted-foreground tracking-[0.2em] px-4 opacity-50 uppercase">
-                {section}
-              </h3>
+              {!isCollapsed && (
+                <h3 className="font-mono text-[9px] text-muted-foreground tracking-[0.2em] px-4 opacity-50 uppercase">
+                  {section}
+                </h3>
+              )}
               <div className="space-y-0.5">
                 {navItems
                   .filter((item) => item.section === section)
@@ -115,15 +129,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       <Link
                         key={item.href}
                         href={item.href}
+                        title={isCollapsed ? item.label : ""}
                         className={cn(
-                          "flex items-center gap-4 px-4 py-3 rounded-2xl text-sm transition-all group",
+                          "flex items-center rounded-2xl text-sm transition-all group",
+                          isCollapsed ? "justify-center p-3" : "gap-4 px-4 py-3",
                           isActive 
                             ? "bg-primary/10 text-primary font-bold shadow-[inset_0_0_20px_hsl(var(--primary)/0.05)]" 
                             : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                         )}
                       >
                         <item.icon className={cn("w-4 h-4 transition-transform group-hover:scale-110", isActive && "text-primary")} />
-                        {item.label}
+                        {!isCollapsed && <span>{item.label}</span>}
                       </Link>
                     )
                   })}
@@ -133,32 +149,41 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* User Profile Summary */}
-        <div className="mt-auto flex flex-col gap-6">
-          <div className="p-4 bg-muted/20 rounded-3xl border border-border group hover:border-primary/20 transition-all cursor-pointer">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center font-bold text-primary text-sm">
+        <div className="mt-auto flex flex-col gap-6 pt-8">
+          <div className={cn(
+            "bg-muted/20 rounded-3xl border border-border group hover:border-primary/20 transition-all cursor-pointer",
+            isCollapsed ? "p-2" : "p-4"
+          )}>
+            <div className={cn("flex items-center gap-3", isCollapsed && "flex-col")}>
+              <div className="w-10 h-10 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center font-bold text-primary text-sm shrink-0">
                 N
               </div>
-              <div className="flex-1 overflow-hidden">
-                <div className="text-xs font-bold truncate">Nischal</div>
-                <div className="text-[9px] text-muted-foreground truncate uppercase tracking-widest">Shift Worker</div>
-              </div>
-              <button 
-                onClick={async () => {
-                  await supabase.auth.signOut()
-                  window.location.href = '/login'
-                }}
-                className="p-2 hover:bg-destructive/10 hover:text-destructive rounded-xl transition-colors text-muted-foreground"
-              >
-                <Settings className="w-4 h-4" />
-              </button>
+              {!isCollapsed && (
+                <>
+                  <div className="flex-1 overflow-hidden">
+                    <div className="text-xs font-bold truncate text-foreground">Nischal</div>
+                    <div className="text-[9px] text-muted-foreground truncate uppercase tracking-widest">Scholar</div>
+                  </div>
+                  <button 
+                    onClick={async () => {
+                      await supabase.auth.signOut()
+                      window.location.href = '/login'
+                    }}
+                    className="p-2 hover:bg-destructive/10 hover:text-destructive rounded-xl transition-colors text-muted-foreground"
+                  >
+                    <Settings className="w-4 h-4" />
+                  </button>
+                </>
+              )}
             </div>
           </div>
           
-          <div className="flex items-center justify-center gap-2 text-[8px] font-mono text-muted-foreground tracking-[0.3em] opacity-20 uppercase">
-            <Sparkles className="w-2 h-2" />
-            Sprint 3 · Active
-          </div>
+          {!isCollapsed && (
+            <div className="flex items-center justify-center gap-2 text-[8px] font-mono text-muted-foreground tracking-[0.3em] opacity-20 uppercase">
+              <Sparkles className="w-2 h-2" />
+              Sprint 3 · Active
+            </div>
+          )}
         </div>
       </aside>
 

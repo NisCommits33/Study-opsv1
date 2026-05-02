@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, CheckCircle2, Trash2, AlertCircle, LayoutGrid, List } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 type Deadline = {
   id: string
@@ -192,10 +193,16 @@ export default function Deadlines() {
       {/* Display of Deadlines */}
       <section>
         {deadlines.length === 0 ? (
-          <div className="py-20 text-center opacity-30 space-y-4">
-            <AlertCircle className="w-12 h-12 mx-auto text-muted-foreground" />
-            <p className="text-lg font-display text-foreground">No active deadlines. Stay chill or add one!</p>
-          </div>
+          <EmptyState 
+            icon={AlertCircle}
+            title="No Active Deadlines"
+            description="Stay chill or add your first exam date, submission deadline, or study goal to start tracking your progress."
+            action={{
+              label: "Add Your First Goal",
+              onClick: () => setShowAdd(true),
+              icon: Plus
+            }}
+          />
         ) : (
           view === 'list' ? (
             <div className="space-y-4">

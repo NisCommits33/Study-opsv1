@@ -10,28 +10,12 @@ import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  BookOpen, 
-  Loader2, 
-  Sparkles, 
-  ArrowLeft,
-  ChevronRight,
-  Type,
-  X,
-  Plus,
-  Trash2,
-  PlusCircle,
-  Trophy,
-  History,
-  Target,
-  MoreVertical,
-  LayoutGrid,
-  List
-} from 'lucide-react'
+import { BookOpen, Loader2, Sparkles, ArrowLeft, ChevronRight, Type, X, Plus, Trash2, PlusCircle, Trophy, History, Target, MoreVertical, LayoutGrid, List, FileUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
-import { createChapterAction, deleteChapterAction, extractChaptersFromTextAction } from '@/app/actions/exam.actions'
+import { createChapterAction, deleteChapterAction, extractChaptersFromTextAction, extractChaptersAction } from '@/app/actions/exam.actions'
 import { toast } from 'sonner'
+import { useRef } from 'react'
 
 export default function ExamDetail() {
   const { id } = useParams()
@@ -41,14 +25,18 @@ export default function ExamDetail() {
   const [sections, setSections] = useState<any[]>([])
   
   const [creating, setCreating] = useState(false)
+  const [ingesting, setIngesting] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showPasteModal, setShowPasteModal] = useState(false)
+  const [autoFillMode, setAutoFillMode] = useState<'paste' | 'upload'>('paste')
   
   const [newChNumber, setNewChNumber] = useState('')
   const [newChTitle, setNewChTitle] = useState('')
   const [newSubtopics, setNewSubtopics] = useState('')
   const [pasteText, setPasteText] = useState('')
   const [view, setView] = useState<'grid' | 'list'>('list')
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Scroll Lock when modal is open
   useEffect(() => {
@@ -115,6 +103,37 @@ export default function ExamDetail() {
       toast.error(error.message)
     } finally {
       setCreating(false)
+    }
+  }
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setIngesting(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error("Unauthorized")
+
+      const fileExt = file.name.split('.').pop()
+      const filePath = `${user.id}/${id}/syllabus_${Date.now()}.${fileExt}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('study-materials')
+        .upload(filePath, file)
+
+      if (uploadError) throw uploadError
+
+      const result = await extractChaptersAction(id as string, filePath)
+      if (!result.success) throw new Error(result.error)
+
+      toast.success('Syllabus processed and chapters generated!')
+      setShowPasteModal(false)
+      fetchExamData()
+    } catch (err: any) {
+      toast.error('Processing failed: ' + err.message)
+    } finally {
+      setIngesting(false)
     }
   }
 
@@ -271,13 +290,13 @@ export default function ExamDetail() {
           <div className="space-y-4">
             <h3 className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest px-4">Subject Tools</h3>
             <div className="grid grid-cols-1 gap-2">
-              <button className="flex items-center gap-4 p-5 rounded-3xl bg-muted/20 border border-border hover:bg-muted/40 transition-all text-left group opacity-50 cursor-not-allowed">
-                <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center"><History className="w-5 h-5 text-muted-foreground" /></div>
+              <Link href={`/exams/${id}/past-papers`} className="flex items-center gap-4 p-5 rounded-3xl bg-muted/20 border border-border hover:bg-muted/40 transition-all text-left group">
+                <div className="w-10 h-10 rounded-2xl bg-primary/20 flex items-center justify-center"><History className="w-5 h-5 text-primary" /></div>
                 <div>
                   <div className="text-sm font-bold text-foreground/80">Past Papers</div>
-                  <div className="text-[10px] text-muted-foreground uppercase tracking-widest">Analysis Coming Soon</div>
+                  <div className="text-[10px] text-muted-foreground uppercase tracking-widest">Question & Frequency Analysis</div>
                 </div>
-              </button>
+              </Link>
               <button className="flex items-center gap-4 p-5 rounded-3xl bg-muted/20 border border-border hover:bg-muted/40 transition-all text-left group opacity-50 cursor-not-allowed">
                 <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center"><Trophy className="w-5 h-5 text-muted-foreground" /></div>
                 <div>
@@ -332,18 +351,52 @@ export default function ExamDetail() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-background/90 backdrop-blur-md" onClick={() => setShowPasteModal(false)} />
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative bg-card w-full max-w-2xl p-10 rounded-[3rem] border border-border shadow-2xl space-y-8">
-              <div className="space-y-1">
-                <h3 className="text-2xl font-bold flex items-center gap-3 text-foreground"><Sparkles className="w-6 h-6 text-primary" /> AI Auto-Fill</h3>
-                <p className="text-sm text-muted-foreground">Paste syllabus text and let AI build your chapter structure.</p>
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <h3 className="text-2xl font-bold flex items-center gap-3 text-foreground"><Sparkles className="w-6 h-6 text-primary" /> AI Auto-Fill</h3>
+                  <p className="text-sm text-muted-foreground">Extract your chapter structure from a syllabus.</p>
+                </div>
+                <div className="flex bg-muted p-1 rounded-xl border border-border">
+                  <button onClick={() => setAutoFillMode('paste')} className={cn("px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all", autoFillMode === 'paste' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>Paste</button>
+                  <button onClick={() => setAutoFillMode('upload')} className={cn("px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all", autoFillMode === 'upload' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>Upload</button>
+                </div>
               </div>
-              <textarea value={pasteText} onChange={(e) => setPasteText(e.target.value)} placeholder="Paste syllabus text here..." className="w-full h-80 p-6 bg-muted/20 border border-border rounded-2xl text-sm focus:outline-none focus:ring-1 focus:ring-primary/20 resize-none transition-all text-foreground" />
-              <div className="flex justify-end gap-4">
-                <button onClick={() => setShowPasteModal(false)} className="px-6 py-3 text-[10px] font-bold uppercase tracking-widest hover:text-foreground transition-colors text-muted-foreground">Cancel</button>
-                <button onClick={handlePasteSubmit} disabled={creating || !pasteText.trim()} className="flex items-center gap-3 px-10 py-4 bg-primary text-primary-foreground rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all hover:scale-105 active:scale-95 disabled:opacity-50 shadow-xl shadow-primary/10">
-                  {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                  {creating ? 'Analyzing...' : 'Generate Knowledge Base'}
-                </button>
-              </div>
+
+              {autoFillMode === 'paste' ? (
+                <div className="space-y-6">
+                  <textarea value={pasteText} onChange={(e) => setPasteText(e.target.value)} placeholder="Paste syllabus text here..." className="w-full h-80 p-6 bg-muted/20 border border-border rounded-2xl text-sm focus:outline-none focus:ring-1 focus:ring-primary/20 resize-none transition-all text-foreground" />
+                  <div className="flex justify-end gap-4">
+                    <button onClick={() => setShowPasteModal(false)} className="px-6 py-3 text-[10px] font-bold uppercase tracking-widest hover:text-foreground transition-colors text-muted-foreground">Cancel</button>
+                    <button onClick={handlePasteSubmit} disabled={creating || !pasteText.trim()} className="flex items-center gap-3 px-10 py-4 bg-primary text-primary-foreground rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all hover:scale-105 active:scale-95 disabled:opacity-50 shadow-xl shadow-primary/10">
+                      {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                      {creating ? 'Analyzing...' : 'Generate Knowledge Base'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-8">
+                  <div className="py-20 border-2 border-dashed border-border rounded-[2rem] bg-muted/5 flex flex-col items-center justify-center gap-6 text-center">
+                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+                      {ingesting ? <Loader2 className="w-8 h-8 text-primary animate-spin" /> : <FileUp className="w-8 h-8 text-primary" />}
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-bold text-foreground">Upload Syllabus PDF</p>
+                      <p className="text-xs text-muted-foreground max-w-xs">AI will read the PDF and automatically build your chapter units.</p>
+                    </div>
+                    <button 
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={ingesting}
+                      className="px-8 py-3 bg-primary text-primary-foreground rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-primary/10 disabled:opacity-50"
+                    >
+                      Select PDF File
+                    </button>
+                    <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept=".pdf" />
+                  </div>
+                  <div className="flex justify-end">
+                    <button onClick={() => setShowPasteModal(false)} className="px-6 py-3 text-[10px] font-bold uppercase tracking-widest hover:text-foreground transition-colors text-muted-foreground">Cancel</button>
+                  </div>
+                </div>
+              )}
             </motion.div>
           </div>
         )}
