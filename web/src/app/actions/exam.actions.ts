@@ -11,10 +11,6 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { chatAction } from './ai.actions'
 
-// Use require for pdf-parse as it has inconsistent ESM support
-const pdf = require('pdf-parse')
-
-
 /**
  * Extracts chapters and subtopics from a syllabus PDF using AI.
  * 
@@ -41,12 +37,18 @@ export async function extractChaptersAction(examId: string, storagePath: string)
       .from('study-materials')
       .download(storagePath)
 
-    if (downloadError) throw downloadError
+    if (downloadError || !fileData) {
+      throw new Error(`Failed to download PDF: ${downloadError?.message}`)
+    }
 
-    // 2. Parse PDF Text
-    const buffer = Buffer.from(await fileData.arrayBuffer())
-    const pdfData = await pdf(buffer)
-    const text = pdfData.text
+    // 2. Parse PDF Text using pdf-parse v2 (PDFParse class API)
+    // Dynamic import avoids Turbopack bundling issues
+    const { PDFParse } = await import('pdf-parse')
+    const arrayBuf = await fileData.arrayBuffer()
+    const parser = new PDFParse({ data: new Uint8Array(arrayBuf) })
+    const textResult = await parser.getText()
+    const text = textResult.text
+    await parser.destroy()
 
     if (!text || text.trim().length < 100) {
       throw new Error("Could not extract enough text from the PDF. Please ensure it is a valid syllabus.")

@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, BookOpen, ChevronRight, FileText, Sparkles, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
+import { toast } from 'sonner'
 
 type Exam = {
   id: string
@@ -55,17 +56,25 @@ export default function ExamsPage() {
     })
 
     if (!error) {
+      toast.success('Knowledge base initialized')
       setNewName('')
       setShowAdd(false)
       fetchExams()
+    } else {
+      toast.error('Failed to create exam')
     }
   }
 
   const deleteExam = async (id: string, e: React.MouseEvent) => {
     e.preventDefault()
     if (!confirm('Are you sure? This will delete all associated notes and progress.')) return
-    await supabase.from('exams').delete().eq('id', id)
-    fetchExams()
+    const { error } = await supabase.from('exams').delete().eq('id', id)
+    if (!error) {
+      toast.success('Exam deleted')
+      fetchExams()
+    } else {
+      toast.error('Failed to delete')
+    }
   }
 
   if (loading) {

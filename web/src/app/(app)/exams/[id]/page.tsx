@@ -21,11 +21,13 @@ import {
   Sparkles, 
   ArrowLeft,
   Settings,
-  FileText
+  FileText,
+  ChevronRight
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { extractChaptersAction } from '@/app/actions/exam.actions'
+import { toast } from 'sonner'
 
 export default function ExamDetail() {
   const { id } = useParams()
@@ -104,12 +106,13 @@ export default function ExamDetail() {
         throw new Error(result.error || "Failed to extract chapters")
       }
 
+      toast.success('Syllabus processed. Chapters generated!')
       setExtracting(false)
       setUploading(false)
       fetchExamData()
 
     } catch (error: any) {
-      alert('Upload failed: ' + error.message)
+      toast.error('Upload failed: ' + error.message)
       setUploading(false)
       setExtracting(false)
     }

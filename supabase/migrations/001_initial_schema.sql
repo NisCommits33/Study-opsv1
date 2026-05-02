@@ -506,3 +506,17 @@ CREATE TABLE notification_log (
 CREATE INDEX idx_notification_log_user ON notification_log(user_id);
 ALTER TABLE notification_log ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "users_own_notifications" ON notification_log FOR SELECT USING (auth.uid() = user_id);
+
+-- ════════════════════════════════════════════════
+-- STORAGE BUCKETS
+-- ════════════════════════════════════════════════
+
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('study-materials', 'study-materials', false)
+ON CONFLICT (id) DO NOTHING;
+
+-- RLS for study-materials bucket
+CREATE POLICY "authenticated_upload" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'study-materials');
+CREATE POLICY "authenticated_select" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'study-materials');
+CREATE POLICY "authenticated_update" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'study-materials');
+CREATE POLICY "authenticated_delete" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'study-materials');

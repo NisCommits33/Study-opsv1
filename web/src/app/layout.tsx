@@ -12,6 +12,7 @@ import "./globals.css";
 import { AssistantSidebar } from "@/components/AssistantSidebar";
 import { AssistantToggle } from "@/components/AssistantToggle";
 import { TimerProvider } from "@/components/TimerProvider";
+import { Toaster } from 'sonner'
 
 // Load fonts from the new design system
 const displayFont = DM_Serif_Display({ 
@@ -63,6 +64,7 @@ export default function RootLayout({
         {/* Global UI Components */}
         <AssistantSidebar />
         <AssistantToggle />
+        <Toaster position="bottom-right" richColors theme="dark" />
       </body>
     </html>
   );
