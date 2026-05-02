@@ -36,55 +36,11 @@ import {
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { ingestChapterContentAction } from '@/app/actions/exam.actions'
-import { cn } from '@/lib/utils'
-import { AIToolbar } from '@/components/AIToolbar'
 import { Classroom } from '@/components/studyops/Classroom'
 import { QuizEngine } from '@/components/studyops/QuizEngine'
+import { useLanguage } from '@/lib/bilingualUtils'
 
 // ─── Components ──────────────────────────────────────────────
-function AIResultModal({ content, onClose }: { content: string, onClose: () => void }) {
-  return (
-    <motion.div 
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-background/80 backdrop-blur-md"
-    >
-      <motion.div 
-        initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
-        className="bg-card border border-border p-8 rounded-[2.5rem] max-w-2xl w-full shadow-2xl space-y-6 relative overflow-hidden"
-      >
-        <div className="absolute top-0 right-0 p-4">
-          <button onClick={onClose} className="p-2 hover:bg-muted rounded-full text-muted-foreground"><X className="w-5 h-5" /></button>
-        </div>
-        <div className="flex items-center gap-4 text-primary">
-          <Sparkles className="w-6 h-6" />
-          <h3 className="text-xl font-display text-foreground">AI Insight</h3>
-        </div>
-        <div className="bg-muted/10 p-6 rounded-2xl border border-border max-h-[60vh] overflow-y-auto prose dark:prose-invert prose-sm">
-          <div className="text-foreground">
-            <ReactMarkdown>{content}</ReactMarkdown>
-          </div>
-        </div>
-        <div className="flex justify-end gap-3">
-          <button 
-            onClick={() => {
-              navigator.clipboard.writeText(content)
-              toast.success('Copied to clipboard!')
-            }}
-            className="px-6 py-2.5 bg-muted hover:bg-muted/80 rounded-xl text-xs font-bold transition-all text-foreground"
-          >
-            Copy Result
-          </button>
-          <button 
-            onClick={onClose}
-            className="px-6 py-2.5 bg-primary text-primary-foreground rounded-xl text-xs font-bold transition-all hover:scale-105"
-          >
-            Got it
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
-  )
-}
 
 // ─── Types ───────────────────────────────────────────────────
 interface Section {
@@ -118,14 +74,14 @@ export default function NotesEditor() {
   const [progress, setProgress] = useState<any>(null)
   
   const [activeTab, setActiveTab] = useState<'read' | 'edit' | 'lesson' | 'quiz'>('read')
-  const [lang, setLang] = useState<'en' | 'np'>('en')
+  const { lang, toggleLanguage } = useLanguage()
   const [editContent, setEditContent] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
-  const [aiResult, setAiResult] = useState<string | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+
 
   useEffect(() => {
     fetchAll()
@@ -161,9 +117,22 @@ export default function NotesEditor() {
     if (progressData) {
       setProgress(progressData)
     } else {
-      setProgress(null)
+      setProgress({ status: 'not_started', confidence: 0 })
     }
     setLoading(false)
+  }
+
+  const updateConfidence = async (val: number) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    await supabase.from('exam_progress').upsert({ 
+      section_id: sectionId, 
+      user_id: user.id, 
+      confidence: val,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'section_id,user_id' })
+    setProgress((prev: any) => ({ ...prev, confidence: val }))
+    toast.success(`Mastery rated: ${val}/5`)
   }
 
   // Auto-save logic
@@ -279,16 +248,31 @@ export default function NotesEditor() {
             {sections.map((s, i) => {
               const isCurrent = s.id === sectionId
               return (
-                <Link key={s.id} href={`/exams/${examId}/notes/${s.id}`} onClick={() => window.innerWidth < 1024 && setSidebarOpen(false)} className={cn(
-                  "flex items-center justify-between px-4 py-2.5 rounded-xl text-xs transition-all border",
-                  isCurrent ? "bg-primary/10 text-primary border-primary/20 font-bold" : "text-muted-foreground hover:text-foreground hover:bg-muted border-transparent"
-                )}>
-                  <div className="flex items-center gap-3 overflow-hidden">
-                    <span className={cn("w-6 h-6 rounded-lg shrink-0 flex items-center justify-center text-[10px]", isCurrent ? "bg-primary text-primary-foreground" : "bg-muted")}>{s.section_number || i+1}</span>
-                    <span className="truncate">{s.title?.en || (typeof s.title === 'string' ? s.title : '')}</span>
-                  </div>
-                  {isCurrent && progress?.status === 'done' && <CheckCircle2 className="w-3 h-3 text-emerald-500" />}
-                </Link>
+                <div key={s.id} className="space-y-1">
+                  <Link href={`/exams/${examId}/notes/${s.id}`} onClick={() => window.innerWidth < 1024 && setSidebarOpen(false)} className={cn(
+                    "flex items-center justify-between px-4 py-2.5 rounded-xl text-xs transition-all border",
+                    isCurrent ? "bg-primary/10 text-primary border-primary/20 font-bold" : "text-muted-foreground hover:text-foreground hover:bg-muted border-transparent"
+                  )}>
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <span className={cn("w-6 h-6 rounded-lg shrink-0 flex items-center justify-center text-[10px]", isCurrent ? "bg-primary text-primary-foreground" : "bg-muted")}>{s.section_number || i+1}</span>
+                      <span className="truncate">{s.title?.en || (typeof s.title === 'string' ? s.title : '')}</span>
+                    </div>
+                    {isCurrent && progress?.status === 'done' && <CheckCircle2 className="w-3 h-3 text-emerald-500" />}
+                  </Link>
+                  
+                  {/* Topics (Subsections) */}
+                  {isCurrent && s.subsections && Array.isArray(s.subsections) && (
+                    <div className="pl-10 space-y-1 py-2">
+                      {s.subsections.map((sub: any, subIdx: number) => (
+                        <div key={subIdx} className="flex items-center gap-2 py-1.5 text-[10px] text-muted-foreground hover:text-foreground transition-all cursor-default">
+                          <div className={cn("w-2 h-2 rounded-full border border-border", sub.done ? "bg-emerald-500 border-emerald-500" : "")} />
+                          <span>{sub.number || `${s.section_number}.${subIdx + 1}`}</span>
+                          <span className="truncate">{sub.title?.[lang] || sub.title?.en || sub.title}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )
             })}
           </nav>
@@ -308,7 +292,6 @@ export default function NotesEditor() {
               {[
                 { id: 'read', label: 'READ', icon: Eye },
                 { id: 'edit', label: 'EDIT', icon: Edit3 },
-                { id: 'lesson', label: 'LESSON', icon: Sparkles },
                 { id: 'quiz', label: 'QUIZ', icon: Star },
               ].map((tab) => (
                 <button
@@ -329,7 +312,7 @@ export default function NotesEditor() {
           </div>
 
           <div className="flex items-center gap-3">
-            <button onClick={() => setLang(lang === 'en' ? 'np' : 'en')} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted border border-border text-[10px] font-bold uppercase tracking-widest hover:bg-muted/80 transition-all text-foreground">
+            <button onClick={toggleLanguage} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted border border-border text-[10px] font-bold uppercase tracking-widest hover:bg-muted/80 transition-all text-foreground">
               <Languages className="w-3.5 h-3.5 text-primary" /> {lang === 'en' ? 'EN' : 'NP'}
             </button>
           </div>
@@ -341,10 +324,29 @@ export default function NotesEditor() {
             
             {/* Header Section */}
             <div className="mb-8 lg:mb-12 space-y-4">
-              <div className="flex items-center gap-3">
-                <span className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded uppercase tracking-widest">Chapter {currentSection?.section_number || currentIndex+1}</span>
-                <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-                  {progress?.status === 'done' ? <><CheckCircle2 className="w-3 h-3 text-emerald-500" /> <span className="hidden sm:inline">Complete</span></> : <><Circle className="w-3 h-3" /> <span className="hidden sm:inline">In Progress</span></>}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <span className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded uppercase tracking-widest">Chapter {currentSection?.section_number || currentIndex+1}</span>
+                  <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+                    {progress?.status === 'done' ? <><CheckCircle2 className="w-3 h-3 text-emerald-500" /> <span className="hidden sm:inline">Complete</span></> : <><Circle className="w-3 h-3" /> <span className="hidden sm:inline">In Progress</span></>}
+                  </div>
+                </div>
+
+                {/* Mastery Stars */}
+                <div className="flex items-center gap-1">
+                  <span className="text-[9px] font-mono text-muted-foreground uppercase tracking-widest mr-2">Mastery:</span>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      onClick={() => updateConfidence(star)}
+                      className={cn(
+                        "transition-all hover:scale-125",
+                        star <= (progress?.confidence || 0) ? "text-primary" : "text-muted-foreground/30 hover:text-primary/50"
+                      )}
+                    >
+                      <Star className={cn("w-4 h-4", star <= (progress?.confidence || 0) && "fill-current")} />
+                    </button>
+                  ))}
                 </div>
               </div>
               <h1 className="text-3xl lg:text-4xl font-bold text-foreground leading-tight">
@@ -355,8 +357,8 @@ export default function NotesEditor() {
             {/* Ingest Toolbar (Only if no content) */}
             {(!note || !note.content?.[lang]) && activeTab === 'read' && (
               <div className="p-8 lg:p-10 border-2 border-dashed border-border rounded-3xl text-center space-y-6 bg-card shadow-sm">
-                <div className="w-12 h-12 lg:w-16 lg:h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-                  <Sparkles className="w-6 h-6 lg:w-8 lg:h-8 text-primary" />
+                <div className="w-12 h-12 lg:w-16 lg:h-16 bg-muted rounded-full flex items-center justify-center mx-auto">
+                  <FileText className="w-6 h-6 lg:w-8 lg:h-8 text-muted-foreground" />
                 </div>
                 <div className="space-y-2">
                   <h3 className="text-lg font-bold text-foreground">Chapter is empty</h3>
@@ -380,7 +382,14 @@ export default function NotesEditor() {
             <div className="pb-24">
               {activeTab === 'read' ? (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 prose dark:prose-invert prose-headings:font-bold prose-h2:text-xl lg:prose-h2:text-2xl prose-p:text-foreground/80 prose-p:leading-relaxed max-w-none text-foreground">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  <ReactMarkdown 
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      img: ({ node, src, alt, ...props }) => {
+                        return <img src={src} alt={alt} {...props} className="rounded-3xl border border-border shadow-lg" />
+                      }
+                    }}
+                  >
                     {note?.content?.[lang] || ""}
                   </ReactMarkdown>
                 </div>
@@ -427,6 +436,8 @@ export default function NotesEditor() {
                       title: currentSection?.title?.[lang] || currentSection?.title?.en || "Quiz",
                       content: note?.content?.[lang] || ""
                     }}
+                    examId={examId as string}
+                    sectionId={sectionId as string}
                     onComplete={(score) => {
                       toast.success(`Quiz Complete! Scored ${score}.`)
                       toggleComplete()
@@ -438,20 +449,6 @@ export default function NotesEditor() {
           </div>
         </div>
 
-        {/* AI Selection Toolbar */}
-        {activeTab === 'read' && note?.content?.[lang] && (
-          <AIToolbar onInsert={(text: string) => setAiResult(text)} />
-        )}
-
-        {/* AI Result Overlay */}
-        <AnimatePresence>
-          {aiResult && (
-            <AIResultModal 
-              content={aiResult} 
-              onClose={() => setAiResult(null)} 
-            />
-          )}
-        </AnimatePresence>
 
         {/* Footer Nav */}
         <footer className="h-20 shrink-0 flex items-center justify-between px-4 lg:px-8 border-t border-border bg-background/50 backdrop-blur-md">

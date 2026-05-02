@@ -51,31 +51,47 @@
   --animate-accordion-up: accordion-up 0.2s ease-out;
 
   @keyframes accordion-down {
-    from { height: 0; }
-    to { height: var(--radix-accordion-content-height); }
+    from {
+      height: 0;
+    }
+
+    to {
+      height: var(--radix-accordion-content-height);
+    }
   }
+
   @keyframes accordion-up {
-    from { height: var(--radix-accordion-content-height); }
-    to { height: 0; }
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+
+    to {
+      height: 0;
+    }
   }
 }
 
 @layer base {
   :root {
     /* StudyOps Light Palette — Muted & Professional */
-    --background: 210 20% 96%; /* #F1F5F9 - Softer background */
-    --foreground: 210 53% 11%; /* #0D1B2A */
+    --background: 210 20% 96%;
+    /* #F1F5F9 - Softer background */
+    --foreground: 210 53% 11%;
+    /* #0D1B2A */
 
-    --card: 0 0% 100%; /* Pure White for cards */
+    --card: 0 0% 100%;
+    /* Pure White for cards */
     --card-foreground: 210 53% 11%;
 
     --popover: 0 0% 100%;
     --popover-foreground: 210 53% 11%;
 
-    --primary: 38 92% 50%; /* #F4A118 Saffron */
+    --primary: 38 92% 50%;
+    /* #F4A118 Saffron */
     --primary-foreground: 210 20% 96%;
 
-    --secondary: 214 32% 91%; /* #E2E8F0 */
+    --secondary: 214 32% 91%;
+    /* #E2E8F0 */
     --secondary-foreground: 210 53% 11%;
 
     --muted: 215 16% 47%;
@@ -87,7 +103,8 @@
     --destructive: 355 88% 66%;
     --destructive-foreground: 210 20% 96%;
 
-    --border: 214 32% 85%; /* Slightly darker border for visibility */
+    --border: 214 32% 85%;
+    /* Slightly darker border for visibility */
     --input: 214 32% 85%;
     --ring: 38 92% 50%;
 
@@ -96,28 +113,36 @@
 
   .dark {
     /* StudyOps Navy Palette — Premium Dark */
-    --background: 210 53% 11%; /* #0D1B2A */
-    --foreground: 210 40% 95%; /* #EDF2F7 */
+    --background: 210 53% 11%;
+    /* #0D1B2A */
+    --foreground: 210 40% 95%;
+    /* #EDF2F7 */
 
-    --card: 216 40% 15%; /* #162234 */
+    --card: 216 40% 15%;
+    /* #162234 */
     --card-foreground: 210 40% 95%;
 
     --popover: 210 53% 11%;
     --popover-foreground: 210 40% 95%;
 
-    --primary: 38 92% 53%; /* #F4A118 Saffron */
+    --primary: 38 92% 53%;
+    /* #F4A118 Saffron */
     --primary-foreground: 210 53% 11%;
 
-    --secondary: 214 39% 20%; /* #1E2F44 */
+    --secondary: 214 39% 20%;
+    /* #1E2F44 */
     --secondary-foreground: 210 40% 95%;
 
-    --muted: 213 31% 39%; /* #4A6080 */
-    --muted-foreground: 212 25% 66%; /* #8FA4BC */
+    --muted: 213 31% 39%;
+    /* #4A6080 */
+    --muted-foreground: 212 25% 66%;
+    /* #8FA4BC */
 
     --accent: 38 92% 53%;
     --accent-foreground: 210 53% 11%;
 
-    --destructive: 355 88% 66%; /* #F45E6B Rose */
+    --destructive: 355 88% 66%;
+    /* #F45E6B Rose */
     --destructive-foreground: 210 40% 95%;
 
     --border: 215 30% 25%;
@@ -130,11 +155,16 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground font-body;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
-  h1, h2, h3, .font-display {
+
+  h1,
+  h2,
+  h3,
+  .font-display {
     @apply font-display;
   }
 }
@@ -171,11 +201,25 @@
   @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border transition-all;
 }
 
-.badge-saffron { @apply bg-saffron/10 text-saffron border-saffron/20; }
-.badge-teal { @apply bg-teal/10 text-teal border-teal/20; }
-.badge-rose { @apply bg-rose/10 text-rose border-rose/20; }
-.badge-sky { @apply bg-sky/10 text-sky border-sky/20; }
-.badge-green { @apply bg-green/10 text-green border-green/20; }
+.badge-saffron {
+  @apply bg-saffron/10 text-saffron border-saffron/20;
+}
+
+.badge-teal {
+  @apply bg-teal/10 text-teal border-teal/20;
+}
+
+.badge-rose {
+  @apply bg-rose/10 text-rose border-rose/20;
+}
+
+.badge-sky {
+  @apply bg-sky/10 text-sky border-sky/20;
+}
+
+.badge-green {
+  @apply bg-green/10 text-green border-green/20;
+}
 
 /* ── Skeleton Animations ── */
 .skeleton {

@@ -35,12 +35,15 @@ interface ClassroomProps {
 export function Classroom({ topic, onComplete }: ClassroomProps) {
   const [messages, setMessages] = useState<any[]>([])
   const [currentSlide, setCurrentSlide] = useState(0)
+  const [isQuestioning, setIsQuestioning] = useState(false)
+  const [userAnswer, setUserAnswer] = useState('')
+  const [feedback, setFeedback] = useState('')
   const [isTeaching, setIsTeaching] = useState(false)
   
   // Simulated Slide content (AI would generate this from topic.content)
   const slides = [
     { title: "Introduction", content: topic.content.slice(0, 300) + "..." },
-    { title: "Core Concepts", content: "Key points from " + topic.title },
+    { title: "Core Concepts", content: "Key points from " + topic.title, isRecall: true },
     { title: "Summary", content: "Wrapping up the session." }
   ]
 
@@ -55,21 +58,37 @@ export function Classroom({ topic, onComplete }: ClassroomProps) {
       name: 'Dr. AI', 
       content: `Namaste! I am your AI Tutor. Today we are exploring "${topic.title}". Let's look at the whiteboard.` 
     }])
-    await new Promise(r => setTimeout(r, 2000))
-    setMessages(prev => [...prev, { 
-      role: 'student', 
-      name: 'Scholar Bot', 
-      content: 'I have a question about the first part!' 
-    }])
     setIsTeaching(false)
   }
 
   const handleNextSlide = () => {
+    if (slides[currentSlide + 1]?.isRecall) {
+        setIsQuestioning(true)
+        setMessages(prev => [...prev, { 
+            role: 'teacher', 
+            name: 'Dr. AI', 
+            content: `Before we proceed, can you explain the main idea of the first part in your own words?` 
+        }])
+    }
+    
     if (currentSlide < slides.length - 1) {
+      if (isQuestioning) return // Block until answered
       setCurrentSlide(prev => prev + 1)
     } else {
       onComplete()
     }
+  }
+
+  const submitAnswer = () => {
+      setIsQuestioning(false)
+      setFeedback("Excellent explanation! You've captured the core concept. Let's move to the next slide.")
+      setMessages(prev => [...prev, { 
+          role: 'student', 
+          name: 'You', 
+          content: userAnswer 
+      }])
+      setCurrentSlide(prev => prev + 1)
+      setUserAnswer('')
   }
 
   return (
@@ -100,9 +119,45 @@ export function Classroom({ topic, onComplete }: ClassroomProps) {
             </div>
             <div className="relative z-10 space-y-6">
                 <h2 className="text-3xl font-bold text-foreground tracking-tight">{slides[currentSlide].title}</h2>
-                <div className="prose prose-invert max-w-none text-muted-foreground leading-relaxed text-lg">
-                    {slides[currentSlide].content}
-                </div>
+                
+                {isQuestioning ? (
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                        className="bg-primary/5 border border-primary/20 p-8 rounded-3xl space-y-4"
+                    >
+                        <div className="flex items-center gap-2 text-primary">
+                            <Sparkles className="w-5 h-5 animate-pulse" />
+                            <span className="text-xs font-bold uppercase tracking-widest">Active Recall Phase</span>
+                        </div>
+                        <p className="text-lg text-foreground font-medium">Explain the concept we just covered in your own words.</p>
+                        <textarea 
+                            value={userAnswer}
+                            onChange={(e) => setUserAnswer(e.target.value)}
+                            placeholder="Type your explanation here..."
+                            className="w-full h-32 bg-background/50 border border-border rounded-2xl p-4 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20 transition-all text-foreground"
+                        />
+                        <button 
+                            onClick={submitAnswer}
+                            disabled={!userAnswer.trim()}
+                            className="px-6 py-3 bg-primary text-primary-foreground rounded-xl text-xs font-bold uppercase tracking-widest hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                        >
+                            Submit Response
+                        </button>
+                    </motion.div>
+                ) : (
+                    <div className="prose dark:prose-invert max-w-none text-foreground/80 leading-relaxed text-lg">
+                        {slides[currentSlide].content}
+                    </div>
+                )}
+
+                {feedback && !isQuestioning && (
+                    <motion.div 
+                        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                        className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-2xl text-emerald-500 text-xs font-medium"
+                    >
+                        {feedback}
+                    </motion.div>
+                )}
             </div>
             <div className="absolute bottom-8 right-8">
                 <button 
@@ -122,10 +177,16 @@ export function Classroom({ topic, onComplete }: ClassroomProps) {
             <div className="w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center text-primary shrink-0">
                 <Bot className="w-10 h-10" />
             </div>
-            <div className="space-y-2 overflow-hidden">
-                <div className="text-[10px] font-mono text-primary uppercase tracking-widest">AI TEACHER</div>
-                <div className="text-xs text-foreground leading-relaxed line-clamp-4 italic">
-                    "{messages.find(m => m.role === 'teacher')?.content}"
+            <div className="space-y-2 overflow-hidden flex-1">
+                <div className="flex items-center justify-between">
+                    <div className="text-[10px] font-mono text-primary uppercase tracking-widest">AI TEACHER</div>
+                    <div className="flex items-center gap-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-[8px] font-mono text-muted-foreground uppercase tracking-widest">Focus Mode: ON</span>
+                    </div>
+                </div>
+                <div className="text-xs text-foreground leading-relaxed line-clamp-3 italic bg-muted/20 p-3 rounded-xl border border-border">
+                    "{messages[messages.length - 1]?.content || "Watching your progress..."}"
                 </div>
             </div>
           </div>

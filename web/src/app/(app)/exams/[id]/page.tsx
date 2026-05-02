@@ -13,7 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { BookOpen, Loader2, Sparkles, ArrowLeft, ChevronRight, Type, X, Plus, Trash2, PlusCircle, Trophy, History, Target, MoreVertical, LayoutGrid, List, FileUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
-import { createChapterAction, deleteChapterAction, extractChaptersFromTextAction, extractChaptersAction } from '@/app/actions/exam.actions'
+import { createChapterAction, deleteChapterAction, extractChaptersFromTextAction, extractChaptersAction, saveAsTemplateAction } from '@/app/actions/exam.actions'
 import { toast } from 'sonner'
 import { useRef } from 'react'
 
@@ -26,6 +26,19 @@ export default function ExamDetail() {
   
   const [creating, setCreating] = useState(false)
   const [ingesting, setIngesting] = useState(false)
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false)
+
+  const handleSaveTemplate = async () => {
+    setIsSavingTemplate(true)
+    try {
+      const res = await saveAsTemplateAction(id as string)
+      if (res.success) {
+        toast.success("Saved as Template!")
+        fetchExamData()
+      } else throw new Error(res.error)
+    } catch (err: any) { toast.error(err.message) }
+    finally { setIsSavingTemplate(false) }
+  }
   const [showAddModal, setShowAddModal] = useState(false)
   const [showPasteModal, setShowPasteModal] = useState(false)
   const [autoFillMode, setAutoFillMode] = useState<'paste' | 'upload'>('paste')
@@ -149,7 +162,12 @@ export default function ExamDetail() {
         </Link>
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="space-y-1">
-            <h1 className="text-5xl font-bold text-foreground tracking-tight leading-none">{exam.name}</h1>
+            <div className="flex items-center gap-3">
+                <h1 className="text-5xl font-bold text-foreground tracking-tight leading-none">{exam.name}</h1>
+                {exam.is_template && (
+                    <span className="px-3 py-1 bg-teal/10 text-teal border border-teal/20 rounded-full text-[9px] font-bold uppercase tracking-widest">Template</span>
+                )}
+            </div>
             <p className="text-muted-foreground text-sm max-w-xl">Curating your knowledge base for professional mastery.</p>
           </div>
           <div className="flex gap-2">
@@ -304,6 +322,22 @@ export default function ExamDetail() {
                   <div className="text-[10px] text-muted-foreground uppercase tracking-widest">Locked</div>
                 </div>
               </button>
+              
+              {!exam?.is_template && (
+                <button 
+                  onClick={handleSaveTemplate}
+                  disabled={isSavingTemplate}
+                  className="flex items-center gap-4 p-5 rounded-3xl bg-teal/5 border border-teal/10 hover:bg-teal/10 transition-all text-left group"
+                >
+                  <div className="w-10 h-10 rounded-2xl bg-teal/20 flex items-center justify-center">
+                    {isSavingTemplate ? <Loader2 className="w-5 h-5 text-teal animate-spin" /> : <Sparkles className="w-5 h-5 text-teal" />}
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold text-teal">Save as Template</div>
+                    <div className="text-[10px] text-teal/60 uppercase tracking-widest">Enable one-click cloning</div>
+                  </div>
+                </button>
+              )}
             </div>
           </div>
 

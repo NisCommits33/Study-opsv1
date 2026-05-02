@@ -7,17 +7,8 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Target, 
-  HelpCircle, 
-  CheckCircle2, 
-  XCircle, 
-  ArrowRight, 
-  Trophy,
-  RefreshCw,
-  Sparkles,
-  Zap
-} from 'lucide-react'
+import { Target, HelpCircle, CheckCircle2, XCircle, ArrowRight, Trophy, RefreshCw, Sparkles, Zap, Loader2 } from 'lucide-react'
+import { logWeakSpotAction, logStudySessionAction } from '@/app/actions/study.actions'
 import { cn } from '@/lib/utils'
 
 interface QuizEngineProps {
@@ -25,14 +16,18 @@ interface QuizEngineProps {
     title: string
     content: string
   }
+  examId?: string
+  sectionId?: string
   onComplete: (score: number) => void
 }
 
-export function QuizEngine({ topic, onComplete }: QuizEngineProps) {
+export function QuizEngine({ topic, examId, sectionId, onComplete }: QuizEngineProps) {
   const [step, setStep] = useState<'intro' | 'active' | 'result'>('intro')
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [score, setScore] = useState(0)
   const [answers, setAnswers] = useState<any[]>([])
+  const [energy, setEnergy] = useState<'high' | 'medium' | 'low'>('medium')
+  const [isFinishing, setIsFinishing] = useState(false)
   
   // Mock Questions (AI would generate these)
   const questions = [
@@ -50,7 +45,19 @@ export function QuizEngine({ topic, onComplete }: QuizEngineProps) {
 
   const handleAnswer = (idx: number) => {
     const isCorrect = idx === questions[currentQuestion].correct
-    if (isCorrect) setScore(prev => prev + 1)
+    if (isCorrect) {
+        setScore(prev => prev + 1)
+    } else {
+        // Log weak spot on error
+        logWeakSpotAction({
+            exam_id: examId,
+            section_id: sectionId,
+            topic: topic.title,
+            source: 'quiz',
+            description: `Incorrectly answered: "${questions[currentQuestion].q}"`,
+            severity: 'medium'
+        })
+    }
     
     setAnswers([...answers, { question: currentQuestion, selected: idx, correct: isCorrect }])
     
@@ -144,17 +151,43 @@ export function QuizEngine({ topic, onComplete }: QuizEngineProps) {
                 <p className="text-sm text-muted-foreground">You scored {score} out of {questions.length}!</p>
             </div>
             <div className="p-6 bg-muted/20 border border-border rounded-3xl space-y-4 text-left">
-                <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest border-b border-border pb-2">Topic Mastery</div>
-                <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-foreground">{topic.title}</span>
-                    <span className="text-xs font-bold text-teal">{Math.round((score/questions.length) * 100)}%</span>
+                <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest border-b border-border pb-2">Session Energy</div>
+                <div className="flex gap-2">
+                    {[
+                        { id: 'low', icon: '😴', label: 'Tired' },
+                        { id: 'medium', icon: '😐', label: 'Neutral' },
+                        { id: 'high', icon: '⚡', label: 'Focused' }
+                    ].map((e: any) => (
+                        <button 
+                            key={e.id}
+                            onClick={() => setEnergy(e.id)}
+                            className={cn(
+                                "flex-1 py-3 rounded-2xl border transition-all text-sm",
+                                energy === e.id ? "bg-primary border-primary text-primary-foreground font-bold shadow-lg shadow-primary/20" : "bg-muted/20 border-border text-muted-foreground"
+                            )}
+                        >
+                            {e.icon} {e.label}
+                        </button>
+                    ))}
                 </div>
             </div>
             <button 
-                onClick={() => onComplete(score)}
-                className="w-full py-5 bg-primary text-primary-foreground rounded-2xl text-[10px] font-bold uppercase tracking-[0.2em] shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
+                onClick={async () => {
+                    setIsFinishing(true)
+                    await logStudySessionAction({
+                        exam_id: examId,
+                        section_id: sectionId,
+                        duration_minutes: 15, // Mock duration
+                        energy_level: energy,
+                        score: score
+                    })
+                    onComplete(score)
+                    setIsFinishing(false)
+                }}
+                disabled={isFinishing}
+                className="w-full py-5 bg-primary text-primary-foreground rounded-2xl text-[10px] font-bold uppercase tracking-[0.2em] shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
             >
-                Finish & Log Session
+                {isFinishing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Finish & Log Session"}
             </button>
           </motion.div>
         )}

@@ -9,9 +9,6 @@
 import type { Metadata } from "next";
 import { DM_Serif_Display, Instrument_Sans, DM_Mono } from "next/font/google";
 import "./globals.css";
-import { AssistantSidebar } from "@/components/AssistantSidebar";
-import { AssistantToggle } from "@/components/AssistantToggle";
-import { TimerProvider } from "@/components/TimerProvider";
 import { Toaster } from 'sonner'
 
 // Load fonts from the new design system
@@ -63,15 +60,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <TimerProvider>
-            {children}
-          </TimerProvider>
-          
-          {/* Global UI Components */}
-          <AssistantSidebar />
-          <AssistantToggle />
-          <Toaster position="bottom-right" richColors />
+          {children}
         </ThemeProvider>
+        <Toaster position="bottom-right" richColors />
       </body>
     </html>
   );

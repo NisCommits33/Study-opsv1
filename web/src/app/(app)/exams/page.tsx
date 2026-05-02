@@ -9,11 +9,11 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, BookOpen, ChevronRight, FileText, Sparkles, Trash2, Search, X, Edit3, LayoutGrid, List } from 'lucide-react'
+import { Plus, BookOpen, ChevronRight, FileText, Sparkles, Trash2, Search, X, Edit3, LayoutGrid, List, Copy, Loader2, ShieldAlert, Landmark, Plane, GraduationCap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { deleteExamAction } from '@/app/actions/exam.actions'
+import { deleteExamAction, cloneExamAction } from '@/app/actions/exam.actions'
 import { EmptyState } from '@/components/ui/EmptyState'
 
 type Exam = {
@@ -33,6 +33,7 @@ export default function ExamsPage() {
   const [editName, setEditName] = useState('')
   const [search, setSearch] = useState('')
   const [view, setView] = useState<'grid' | 'list'>('grid')
+  const [cloningId, setCloningId] = useState<string | null>(null)
 
   // Scroll Lock when modal is open
   useEffect(() => {
@@ -52,6 +53,25 @@ export default function ExamsPage() {
     const { data } = await supabase.from('exams').select('*').order('created_at', { ascending: false })
     if (data) setExams(data as Exam[])
     setLoading(false)
+  }
+
+  const handleClone = async (id: string, name: string, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setCloningId(id)
+    try {
+        const res = await cloneExamAction(id, `${name} (Copy)`)
+        if (res.success) {
+            toast.success("Exam cloned successfully")
+            fetchExams()
+        } else {
+            throw new Error(res.error)
+        }
+    } catch (err: any) {
+        toast.error("Clone failed: " + err.message)
+    } finally {
+        setCloningId(null)
+    }
   }
 
   const handleAdd = async () => {
@@ -167,6 +187,14 @@ export default function ExamsPage() {
                       </div>
                       <div className="flex items-center gap-1">
                         <button 
+                            onClick={(e) => handleClone(exam.id, exam.name, e)}
+                            disabled={cloningId === exam.id}
+                            className="p-2 text-muted-foreground/30 hover:text-teal rounded-lg transition-all opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                            title="Clone Exam"
+                        >
+                            {cloningId === exam.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />}
+                        </button>
+                        <button 
                           onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowEdit(exam); setEditName(exam.name); }}
                           className="p-2 text-muted-foreground/30 hover:text-primary rounded-lg transition-all opacity-0 group-hover:opacity-100"
                         >
@@ -220,6 +248,14 @@ export default function ExamsPage() {
                     </div>
                     <div className="flex items-center gap-2 pr-2">
                       <button 
+                        onClick={(e) => handleClone(exam.id, exam.name, e)}
+                        disabled={cloningId === exam.id}
+                        className="p-2.5 text-muted-foreground/30 hover:text-teal hover:bg-muted rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                        title="Clone Exam"
+                      >
+                         {cloningId === exam.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                      <button 
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowEdit(exam); setEditName(exam.name); }}
                         className="p-2.5 text-muted-foreground/30 hover:text-primary hover:bg-muted rounded-xl transition-all opacity-0 group-hover:opacity-100"
                       >
@@ -239,6 +275,38 @@ export default function ExamsPage() {
             </div>
           )
         )}
+      </section>
+
+      {/* ── Explore Templates (Step 33) ── */}
+      <section className="space-y-8 pt-12 border-t border-border">
+        <div className="flex items-center justify-between">
+            <div className="space-y-1">
+                <h2 className="text-3xl font-bold text-foreground">Explore Templates</h2>
+                <p className="text-sm text-muted-foreground">Clone community-vetted exam structures and start studying instantly.</p>
+            </div>
+            <button className="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline">View All Templates</button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+                { name: "ARFF Promotion 2026", units: 14, color: "bg-rose", icon: ShieldAlert },
+                { name: "Loksewa Civil Service", units: 28, color: "bg-teal", icon: Landmark },
+                { name: "Aviation Safety (ICAO)", units: 12, color: "bg-sky", icon: Plane },
+                { name: "General Knowledge (NP)", units: 18, color: "bg-amber", icon: GraduationCap }
+            ].map((tmpl, i) => (
+                <div key={i} className="group p-8 rounded-[2.5rem] bg-card border border-border hover:border-primary/20 transition-all shadow-sm space-y-6 relative overflow-hidden">
+                    <div className={cn("absolute -top-10 -right-10 w-32 h-32 opacity-5 rounded-full", tmpl.color)} />
+                    <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg", tmpl.color)}>
+                        <tmpl.icon className="w-6 h-6" />
+                    </div>
+                    <div className="space-y-2">
+                        <h3 className="text-lg font-bold text-foreground leading-snug">{tmpl.name}</h3>
+                        <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">{tmpl.units} Strategic Units</div>
+                    </div>
+                    <button className="w-full py-3 bg-muted hover:bg-primary hover:text-primary-foreground rounded-2xl text-[9px] font-bold uppercase tracking-widest transition-all">Clone Template</button>
+                </div>
+            ))}
+        </div>
       </section>
 
       {/* ── Add Modal ── */}

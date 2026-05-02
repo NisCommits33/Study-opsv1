@@ -43,28 +43,28 @@ This document outlines the phased development of the Study Ops platform, broken 
 ### 🏃 Sprint 4: Intelligence & Accountability (Steps 19-25)
 **Goal:** Smart planning and active reminders.
 - [x] **Step 19:** Interview Prep (Text mode, STAR builder, question bank)
-- [ ] **Step 20:** Voice Mode (Groq Whisper, Nepali support)
-- [ ] **Step 21:** Weak Spot Tracker (Cross-module persistence)
+- [x] **Step 20:** Voice Mode (Groq Whisper, Nepali support)
+- [x] **Step 21:** Weak Spot Tracker (Cross-module persistence)
 - [x] **Step 22:** AI Daily Planner + Risk Assessor
 - [x] **Step 23:** Procrastination Detector + Push Notifications
-- [ ] **Step 24:** Session Analyser (Weekly habit insights)
-- [ ] **Step 25:** Exam Template System (Publish/Clone structures)
+- [x] **Step 24:** Session Analyser (Weekly habit insights)
+- [x] **Step 25:** Exam Template System (Publish/Clone structures)
 
 ---
 
 ### 🏃 Sprint 5: Advanced Features & Polish (Steps 26-39)
 **Goal:** Frictionless capture, offline support, and final refinements.
-- [ ] **Step 26:** Quick Capture (Floating button, AI auto-tagging)
-- [ ] **Step 27:** Study Energy Log (Post-session rating, trend charts)
-- [ ] **Step 28:** Exam Day Simulator (Timed full paper, AI debrief)
-- [ ] **Step 29:** Past Answer Archive (Comparison & growth tracking)
-- [ ] **Step 30:** BS Calendar (Bikram Sambat Nepali date support)
-- [ ] **Step 31:** Chapter Revision Heatmap (Gap visualization)
-- [ ] **Step 32:** Focus Music (Ambient player, Pomodoro integration)
-- [ ] **Step 33:** Tired Mode (Exhausted mood + AI tone adjustment)
-- [ ] **Step 34:** Offline/PWA (Service worker caching, IndexedDB sync)
-- [ ] **Step 35:** Data Export (ZIP download of all personal data)
-- [ ] **Step 36-39:** Security, Monitoring, and Deployment
+- [x] **Step 26:** Quick Capture (Floating button, AI auto-tagging)
+- [x] **Step 27:** Study Energy Log (Post-session rating, trend charts)
+- [x] **Step 28:** Exam Day Simulator (Timed full paper, AI debrief)
+- [x] **Step 29:** Past Answer Archive (Comparison & growth tracking)
+- [x] **Step 30:** BS Calendar (Bikram Sambat Nepali date support)
+- [x] **Step 31:** Chapter Revision Heatmap (Gap visualization)
+- [x] **Step 32:** Focus Music (Ambient player, Pomodoro integration)
+- [x] **Step 33:** Tired Mode (Exhausted mood + AI tone adjustment)
+- [x] **Step 34:** Offline/PWA (Service worker caching, IndexedDB sync)
+- [x] **Step 35:** Data Export (ZIP download of all personal data)
+- [x] **Step 36-39:** Security, Monitoring, and Deployment
 
 ---
 
