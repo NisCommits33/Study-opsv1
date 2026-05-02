@@ -1,0 +1,295 @@
+/**
+ * @file dashboard/page.tsx
+ * @description Refined Dashboard following the StudyOps Design System.
+ * Features shift awareness, stat cards, and activity overview with a premium aesthetic.
+ * 
+ * @author Study Ops Engineering
+ */
+
+'use client'
+
+import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase/client'
+import { getShiftForDate, getFreeWindows, formatNepaliDate, ShiftType } from '@/lib/shiftUtils'
+import { Skeleton } from '@/components/ui/Skeleton'
+import { motion } from 'framer-motion'
+import { 
+  Calendar, 
+  Clock, 
+  AlertCircle, 
+  TrendingUp, 
+  Zap, 
+  Sparkles, 
+  Target, 
+  ChevronRight,
+  Plus
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+
+/**
+ * Dashboard Component.
+ */
+export default function Dashboard() {
+  const [loading, setLoading] = useState(true)
+  const [profile, setProfile] = useState<any>(null)
+  const [shiftConfig, setShiftConfig] = useState<any>(null)
+  const [currentShift, setCurrentShift] = useState<ShiftType | null>(null)
+  const [mood, setMood] = useState<string>('focused')
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+
+      const { data: shiftData } = await supabase
+        .from('shift_configs')
+        .select('*')
+        .eq('user_id', user.id)
+        .single()
+
+      setProfile(profileData)
+      setShiftConfig(shiftData)
+
+      if (shiftData) {
+        const shift = getShiftForDate(
+          new Date(),
+          new Date(shiftData.cycle_start_date),
+          shiftData.first_shift_type as ShiftType
+        )
+        setCurrentShift(shift)
+      }
+      
+      setLoading(false)
+    }
+
+    fetchData()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="p-10 space-y-10">
+        <div className="flex justify-between items-end">
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-10 w-64" />
+          </div>
+          <Skeleton className="h-12 w-48 rounded-xl" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <Skeleton className="h-32 rounded-2xl" />
+          <Skeleton className="h-32 rounded-2xl" />
+          <Skeleton className="h-32 rounded-2xl" />
+          <Skeleton className="h-32 rounded-2xl" />
+        </div>
+        <Skeleton className="h-[400px] rounded-[2.5rem]" />
+      </div>
+    )
+  }
+
+  const freeWindows = currentShift ? getFreeWindows(currentShift) : []
+
+  return (
+    <main className="p-10 max-w-7xl mx-auto space-y-10 pb-24">
+      {/* Header Section */}
+      <section className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="space-y-1">
+          <div className="font-mono text-[10px] text-muted-foreground tracking-[0.2em] uppercase">
+            Overview · {formatNepaliDate(new Date())}
+          </div>
+          <h1 className="text-4xl font-display text-white">
+            Hi, <span className="text-saffron">{profile?.full_name?.split(' ')[0] || 'Scholar'}</span>
+          </h1>
+        </div>
+        
+        {/* Mood Selector from Design System */}
+        <div className="flex gap-2 bg-navy-light/50 p-1.5 rounded-2xl border border-white/5">
+          {[
+            { id: 'focused', emoji: '⚡', label: 'FOCUSED' },
+            { id: 'okay', emoji: '😐', label: 'OKAY' },
+            { id: 'low', emoji: '😴', label: 'LOW' },
+          ].map((m) => (
+            <button
+              key={m.id}
+              onClick={() => setMood(m.id)}
+              className={cn(
+                "flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all border border-transparent",
+                mood === m.id 
+                  ? "bg-saffron/10 border-saffron/20" 
+                  : "hover:bg-white/5"
+              )}
+            >
+              <span className="text-lg">{m.emoji}</span>
+              <span className="font-mono text-[8px] text-muted-foreground tracking-widest">{m.label}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* Stat Cards from Design System */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard 
+          label="Study streak" 
+          value="12" 
+          sub="days · personal best 14" 
+          accent 
+        />
+        <StatCard 
+          label="Shift Status" 
+          value={currentShift || 'Off'} 
+          sub={currentShift === 'off' ? 'Free 6.5h today' : '12:30–19:00'} 
+          icon={<Clock className="w-4 h-4" />}
+        />
+        <StatCard 
+          label="Weak spots" 
+          value="7" 
+          sub="across 3 subjects" 
+          color="text-rose" 
+        />
+        <StatCard 
+          label="Days to exam" 
+          value="27" 
+          sub="Big Data · May 29" 
+          color="text-saffron" 
+        />
+      </section>
+
+      {/* Main Focus Area */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Today's Plan */}
+        <div className="lg:col-span-2 glass rounded-[2.5rem] p-10 space-y-8 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-10 opacity-5 group-hover:opacity-10 transition-opacity">
+            <Sparkles className="w-32 h-32 text-saffron" />
+          </div>
+          
+          <div className="flex items-center justify-between relative z-10">
+            <h2 className="text-2xl font-display flex items-center gap-3">
+              <Target className="w-6 h-6 text-saffron" />
+              Today's Focus Plan
+            </h2>
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">STUDY RISK</div>
+                <div className="text-sm font-bold text-rose">HIGH</div>
+              </div>
+              <div className="w-12 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                <div className="w-4/5 h-full bg-rose shadow-[0_0_10px_#F45E6B]" />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4 relative z-10">
+            <PlanItem 
+              id="01" 
+              title="Aviation Fire Physics" 
+              sub="3 Sections · 45 mins" 
+              status="current" 
+            />
+            <PlanItem 
+              id="02" 
+              title="Nepal Constitution" 
+              sub="Fundamental Rights · 30 mins" 
+              status="pending" 
+            />
+            <PlanItem 
+              id="03" 
+              title="Big Data Concepts" 
+              sub="HDFS Replication · 15 mins" 
+              status="pending" 
+            />
+          </div>
+
+          <div className="pt-6 relative z-10">
+            <button className="w-full py-4 bg-saffron text-navy font-bold rounded-2xl shadow-xl shadow-saffron/10 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+              Start Focused Session <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* AI Insight Sidebar */}
+        <div className="space-y-6">
+          <div className="card-accent p-8 space-y-4">
+            <div className="font-mono text-[9px] text-muted-foreground tracking-widest">AI INSIGHT</div>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              You're on a <span className="text-white font-bold">morning shift</span> today. Your free window is <span className="text-saffron font-bold">2:00–4:30 PM</span>. I've scheduled HDFS replication first — it's your highest weak spot.
+            </p>
+          </div>
+          
+          <div className="glass rounded-3xl p-6 space-y-4">
+            <h3 className="font-display text-lg">Next Deadline</h3>
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-rose/10 flex flex-col items-center justify-center text-rose">
+                <span className="text-xl font-display leading-none">3</span>
+                <span className="text-[8px] font-mono font-bold">DAYS</span>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <div className="text-sm font-bold truncate">Big Data Viva</div>
+                <div className="text-[10px] text-muted-foreground uppercase tracking-tighter">Mon May 5 · High Priority</div>
+              </div>
+            </div>
+          </div>
+
+          <button className="w-full p-4 border border-white/5 bg-white/5 rounded-2xl flex items-center justify-center gap-2 text-xs font-bold hover:bg-white/10 transition-all uppercase tracking-widest">
+            <Plus className="w-4 h-4" /> Quick Capture
+          </button>
+        </div>
+      </div>
+    </main>
+  )
+}
+
+/**
+ * StatCard Sub-component from Design System.
+ */
+function StatCard({ label, value, sub, accent, color, icon }: any) {
+  return (
+    <motion.div 
+      whileHover={{ y: -5 }}
+      className="bg-navy-light border border-white/5 p-6 rounded-[20px] space-y-2 shadow-lg"
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">{label}</span>
+        {icon && <div className="text-muted-foreground opacity-50">{icon}</div>}
+      </div>
+      <div className={cn("text-3xl font-display", accent ? "text-saffron" : color || "text-white")}>
+        {value}
+      </div>
+      <div className="text-[10px] text-muted-foreground uppercase tracking-tighter">{sub}</div>
+    </motion.div>
+  )
+}
+
+/**
+ * PlanItem Sub-component.
+ */
+function PlanItem({ id, title, sub, status }: any) {
+  return (
+    <div className={cn(
+      "p-5 rounded-2xl border flex items-center justify-between group cursor-pointer transition-all",
+      status === 'current' 
+        ? "bg-saffron/10 border-saffron/20 shadow-[0_0_20px_rgba(244,161,24,0.05)]" 
+        : "bg-white/5 border-white/5 hover:border-white/10"
+    )}>
+      <div className="flex items-center gap-5">
+        <div className={cn(
+          "w-12 h-12 rounded-xl flex items-center justify-center font-display text-lg",
+          status === 'current' ? "bg-saffron text-navy" : "bg-navy-lighter text-muted-foreground"
+        )}>
+          {id}
+        </div>
+        <div>
+          <div className={cn("font-bold", status === 'current' ? "text-white" : "text-muted-foreground")}>{title}</div>
+          <div className="text-xs text-muted-foreground mt-0.5">{sub}</div>
+        </div>
+      </div>
+      {status === 'current' && (
+        <div className="w-2 h-2 rounded-full bg-saffron animate-pulse shadow-[0_0_10px_#F4A118]" />
+      )}
+    </div>
+  )
+}

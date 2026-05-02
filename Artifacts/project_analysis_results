@@ -1,0 +1,256 @@
+# Study Ops Spec — Full Analysis
+
+> **Source:** [study-ops-spec (1).md](file:///c:/Users/nees2/OneDrive/Desktop/Study%20ops/study-ops-spec%20(1).md)
+> **Lines:** 1,738 | **Size:** ~69 KB | **Version:** v1.0 (May 2026)
+
+---
+
+## 1. Executive Summary
+
+Study Ops is an **ambitious, AI-heavy, full-stack personal study platform** targeting shift workers preparing for Nepal government service (Loksewa) exams, ARFF professionals, and university students. The spec is remarkably detailed — it defines 17 feature modules, 22 database tables, a 34-step build order, a multi-provider AI fallback chain, OpenMAIC integration, bilingual support, and a complete folder structure.
+
+### Verdict
+
+| Dimension | Rating | Notes |
+|---|---|---|
+| **Clarity** | ⭐⭐⭐⭐⭐ | Exceptionally well-written. Every feature has behaviour, DB schema, and code samples. |
+| **Completeness** | ⭐⭐⭐⭐⭐ | Covers auth, DB, AI, UI, deployment, env vars, and build order. Ready to code from. |
+| **Scope** | ⚠️ Very Large | 17 modules, 22 tables, 34 build steps. This is a 3–6 month solo project at minimum. |
+| **Feasibility** | ⭐⭐⭐⭐ | All tech choices are sound and proven. Risk is scope, not technology. |
+| **Originality** | ⭐⭐⭐⭐⭐ | Shift-aware AI planner + Loksewa focus + OpenMAIC merge = genuinely novel. |
+
+---
+
+## 2. Architecture Assessment
+
+### Tech Stack — Strong Choices
+
+| Choice | Assessment |
+|---|---|
+| Next.js 14 App Router | ✅ Correct. Server components + API routes in one project. Vercel-native. |
+| TypeScript strict mode | ✅ Essential for a project of this scale. |
+| Supabase (Postgres + RLS + Storage + Auth) | ✅ Excellent. One service handles DB, auth, storage, and edge functions. Free tier is generous. |
+| Tailwind + shadcn/ui | ✅ Fast UI development. shadcn is flexible and unstyled — good for customisation. |
+| Zustand | ✅ Lightweight, no boilerplate. Perfect for language toggle, sidebar state, user context. |
+| Zod | ✅ Runtime validation on API routes is critical when AI outputs JSON. |
+| pnpm | ✅ Fast, disk-efficient. Good choice. |
+
+### AI Architecture — Well-Designed, One Concern
+
+The **three-tier fallback chain** (Groq → OpenAI → Claude) is smartly designed:
+
+```
+Groq (free, fast) → OpenAI (reliable) → Claude (best Nepali)
+```
+
+- Retry logic on 429/503/timeout is correct
+- `aiChat()` as a single entry point is clean
+- Logging fallback events to `ai_logs` enables production monitoring
+
+> [!WARNING]
+> **Cost concern:** If Groq's free tier hits limits consistently, OpenAI and Anthropic will start billing. With 50 requests/user/day and multiple users, fallback costs could escalate without a billing alert system. The spec doesn't mention a cost monitoring or alerting mechanism.
+
+### OpenMAIC Integration — High Risk, High Reward
+
+The spec proposes a **full merge** (not iframe) of the Tsinghua OpenMAIC project. This is architecturally correct (avoids cross-origin pain), but comes with risks:
+
+| Aspect | Assessment |
+|---|---|
+| Merge approach | ✅ Direct component import is the right call vs. iframe |
+| Estimated changes (~80 lines) | ⚠️ Optimistic. Dependency conflicts and config merging will add friction. |
+| OpenMAIC maintenance | ⚠️ Once forked and modified, upstream updates become hard to merge |
+| Groq as OpenAI-compatible backend | ✅ Clever. `OPENAI_BASE_URL` swap is clean. |
+
+---
+
+## 3. Feature-by-Feature Breakdown
+
+### Complexity & Priority Matrix
+
+| # | Feature | Complexity | Priority | Dependencies | Build Step |
+|---|---|---|---|---|---|
+| 4.1 | Dashboard | Medium | P0 | Shift calc, deadlines, sessions | 9 |
+| 4.2 | AI Assistant Sidebar | **High** | P0 | AI provider, all data models | 8 |
+| 4.3 | Deadlines | Low | P0 | None | 10 |
+| 4.4 | Schedule | Medium | P1 | `shiftUtils.ts` | 9 |
+| 4.5 | Pomodoro Timer | Medium | P1 | Session logging | 11 |
+| 4.6 | Study Sessions + Heatmap | Medium | P1 | Sessions table | 12 |
+| 4.7 | Exam Module | **Very High** | P0 | PDF upload, AI, bilingual, OpenMAIC | 13–17 |
+| 4.8 | Interview Prep | High | P2 | AI, Whisper, STAR builder | 18–19 |
+| 4.9 | Notifications | Medium | P2 | Edge functions, service worker | 22 |
+| 4.10 | Quick Capture | Low | P2 | AI auto-tag | 25 |
+| 4.11 | Energy Log | Low | P3 | Sessions table | 26 |
+| 4.12 | Exam Day Simulator | High | P2 | Question bank, timer, AI debrief | 27 |
+| 4.13 | Past Answer Archive | Medium | P3 | Answer storage across modules | 28 |
+| 4.14 | BS Calendar | Low | P2 | `nepali-date-converter` pkg | 29 |
+| 4.15 | Revision Heatmap | Medium | P2 | Session + objective data | 30 |
+| 4.16 | Focus Music | Low | P3 | Audio files, Web Audio API | 31 |
+| 4.17 | Tired Mode | Low | P3 | Prompt modification only | 32 |
+
+### Feature Highlights & Concerns
+
+#### AI Assistant (4.2) — The Core Differentiator
+This is the **most important feature** and the most complex. It needs to read shift config, deadlines, past sessions, weak spots, and chapter frequency — then generate a coherent, editable plan. The natural language input examples are excellent and well-scoped.
+
+> [!IMPORTANT]
+> The context window for the AI assistant could get very large. With all user data being fed as context (shifts, deadlines, sessions, weak spots, frequency data), you'll need a **context builder** that intelligently summarises rather than dumps raw data. The spec mentions `context_json` in `assistant_messages` but doesn't detail the context assembly strategy.
+
+#### Exam Module (4.7) — The Heaviest Module
+This is effectively **3 sub-apps in one**:
+1. A notes editor with bilingual markdown + W3Schools-style reader
+2. An OpenMAIC integration for interactive lessons
+3. A quiz generator from user notes
+
+Plus PDF upload, syllabus extraction, past paper analysis, and frequency computation. This alone is a multi-week effort.
+
+#### Bilingual System (§6) — Pervasive Impact
+Every UI string, every AI prompt, every DB content field needs bilingual handling. The `BilingualText` type and `t()` helper are well-designed, but the **testing burden** is high — every feature needs verification in both languages.
+
+---
+
+## 4. Database Schema Review
+
+### Strengths
+- **22 tables** with clear responsibilities and no obvious normalisation issues
+- `user_id` on every table + RLS = proper multi-tenancy
+- `jsonb` for bilingual fields is the right Postgres pattern
+- `UNIQUE(user_id, date)` on `ai_usage` prevents duplicate daily counters
+- Soft enums via `text` columns with comments documenting valid values
+
+### Issues & Recommendations
+
+| Issue | Table(s) | Recommendation |
+|---|---|---|
+| No indexes defined | All | Add indexes on `user_id`, `exam_id`, `section_id`, and any column used in WHERE clauses. Performance will degrade with data growth. |
+| `study_sessions.plan_id` has no FK constraint | `study_sessions` | Add `REFERENCES daily_plans` or document why it's intentionally loose. |
+| `ai_logs` is missing `provider` and `model` columns | `ai_logs` | The spec's §2 says to log `provider` and `model` on every AI call, but the actual schema in §9 omits them. |
+| `answer_archive.source_session_id` has no FK | `answer_archive` | Should reference `study_sessions` or `interview_sessions` — currently untyped. |
+| No `updated_at` triggers | Most tables | Add `updated_at` columns with auto-update triggers for audit trails. |
+| `chapter_frequency` lacks `user_id` | `chapter_frequency` | If exams are user-scoped, frequency should be too — or confirm it's derived from user-owned exams only. |
+| No soft-delete pattern | All | Consider `deleted_at` columns for data recovery, especially on user-created content. |
+
+### Missing Tables
+
+| What's Missing | Where It's Referenced |
+|---|---|
+| `flashcards` or flashcard storage | §8.6 mentions "Auto Flashcard Generator" but flashcards go to `question_bank` — this works but blurs the line between past paper questions and AI-generated flashcards. Consider a `source` column. |
+| `weekly_reports` | §8.4 mentions weekly reports generated every Sunday. Where are they stored? |
+| `notification_log` | No record of which notifications were sent/read. |
+
+---
+
+## 5. Risk Analysis
+
+### 🔴 Critical Risks
+
+| Risk | Impact | Mitigation |
+|---|---|---|
+| **Scope creep / burnout** | 34 build steps as a solo dev. High chance of abandonment past step 15. | Phase ruthlessly. Ship steps 1–12 as MVP. Everything else is Phase 2+. |
+| **Groq free tier limits** | 14,400 req/day sounds high but with AI assistant, quiz, planner, risk assessor, interview all making calls — a power user could hit 50 personal limit fast. | The per-user 50/day limit is smart. Monitor aggregate usage too. |
+| **OpenMAIC merge complexity** | The "~80 lines" estimate is almost certainly low. Dependency conflicts (React versions, Tailwind config, etc.) could take days. | Attempt the merge early (step 7 in build order is correct). If it fails, fall back to iframe as Plan B. |
+
+### 🟠 Moderate Risks
+
+| Risk | Impact | Mitigation |
+|---|---|---|
+| **AI output parsing** | Groq/OpenAI returning malformed JSON for syllabus extraction or quiz generation. | Zod validation is specified. Add retry with a "fix your JSON" prompt. |
+| **Bilingual testing** | Every feature needs Nepali testing. Easy to ship broken NP UI. | Automated screenshot tests in both languages. |
+| **Whisper Nepali accuracy** | Groq Whisper `ne` language support quality is uncertain. | Test early. Have a "type instead" fallback always visible. |
+| **nepali-date-converter reliability** | Community npm package for BS dates. May have edge cases. | Pin the version. Write unit tests for known date pairs. |
+
+### 🟢 Low Risks
+
+| Risk | Notes |
+|---|---|
+| Supabase scaling | Free tier is generous. RLS + Postgres are battle-tested. |
+| Vercel deployment | Straightforward Next.js deploy. No special config needed. |
+| shadcn/ui compatibility | Actively maintained, works perfectly with Next.js 14. |
+
+---
+
+## 6. Build Order Assessment
+
+The 34-step build order is **logically sequenced** — dependencies are respected (DB → Auth → Core features → AI features → Polish). However:
+
+> [!TIP]
+> **Recommended MVP cutoff: Step 16.** After step 16, you have:
+> - ✅ Auth + onboarding
+> - ✅ Dashboard with shift awareness
+> - ✅ AI assistant sidebar
+> - ✅ Deadlines with countdown
+> - ✅ Pomodoro timer + session tracking
+> - ✅ Exam module with notes + quiz
+> - ✅ OpenMAIC interactive lessons
+> 
+> This is a **shippable, impressive product**. Steps 17–34 are enhancements.
+
+### Suggested Phase Breakdown
+
+```mermaid
+gantt
+    title Study Ops Build Phases
+    dateFormat  YYYY-MM-DD
+    section Phase 1 — MVP
+    DB + Auth + Scaffold         :a1, 2026-05-01, 5d
+    Onboarding + OpenMAIC merge  :a2, after a1, 7d
+    AI Assistant + Dashboard     :a3, after a2, 7d
+    Deadlines + Timer + Sessions :a4, after a3, 5d
+    Exam Module (Notes + Quiz)   :a5, after a4, 10d
+    section Phase 2 — Intelligence
+    Past Papers + Frequency      :b1, after a5, 5d
+    Interview Prep               :b2, after b1, 7d
+    Weak Spot Tracker            :b3, after b2, 3d
+    Daily Planner + Risk         :b4, after b3, 5d
+    section Phase 3 — Polish
+    Notifications                :c1, after b4, 3d
+    Quick Capture + Energy Log   :c2, after c1, 3d
+    Exam Simulator + Archive     :c3, after c2, 5d
+    BS Calendar + Heatmap        :c4, after c3, 3d
+    Focus Music + Tired Mode     :c5, after c4, 2d
+```
+
+---
+
+## 7. Strengths to Preserve
+
+1. **The `aiChat()` abstraction** — clean, testable, provider-agnostic. Don't compromise this.
+2. **BilingualText as a first-class type** — baking bilingual support into the type system (not as an afterthought) is excellent.
+3. **Mood-aware planning** — the 5-level mood selector influencing AI plan density is a genuinely thoughtful UX feature.
+4. **Shift-aware study windows** — this is the killer differentiator. No other study app does this.
+5. **The W3Schools-style reader** — familiar, accessible, proven UX pattern for study content.
+6. **Exam templates as public/clonable** — this creates network effects and platform value.
+
+---
+
+## 8. Key Recommendations
+
+### Must-Do Before Coding
+
+- [ ] **Add indexes to the SQL schema** — the spec has zero indexes. Add them for `user_id`, `exam_id`, `section_id`, `date`, and any filtered column.
+- [ ] **Fix `ai_logs` schema** — add `provider text` and `model text` columns to match the logging code in §2.
+- [ ] **Add `updated_at` columns** — at minimum on `profiles`, `exam_notes`, `exam_progress`, `daily_plans`.
+- [ ] **Define the AI context assembly strategy** — how does the assistant sidebar build its context prompt? What data gets included, how is it summarised, what's the max token budget?
+
+### Should-Do
+
+- [ ] **Add a `source` column to `question_bank`** — distinguish between `'past_paper'`, `'ai_generated'`, `'manual'` to separate flashcards from exam questions.
+- [ ] **Add cost tracking** — log estimated token costs per AI call. You need visibility into fallback spend.
+- [ ] **Plan for offline/PWA** — shift workers may study in areas with poor connectivity. Service worker is already in the spec for push notifications — extend it for offline notes access.
+- [ ] **Error boundary strategy** — the spec mentions error/loading states on every component but doesn't define a global error boundary pattern.
+
+### Nice-to-Have
+
+- [ ] **Rate limiting on API routes** — beyond the 50/day AI limit, add general rate limiting (e.g., `next-rate-limit` or Vercel's built-in).
+- [ ] **Data export** — users should be able to export their notes, session history, and question banks.
+- [ ] **Accessibility audit plan** — no mention of ARIA labels, keyboard navigation, or screen reader support.
+
+---
+
+## 9. Summary
+
+This is one of the most thorough project specs I've seen for a personal/indie project. The tech choices are sound, the feature design is thoughtful, and the build order is logical. The primary risk is **scope** — 17 feature modules and 34 build steps is a lot for a solo developer balancing shift work and university.
+
+**My recommendation: treat steps 1–16 as the MVP, ship it, use it yourself for your May exams, then iterate.** The spec is ready to build from — the only gaps are minor schema issues and the AI context assembly strategy.
+
+> [!IMPORTANT]
+> **Next step decision:** Are you ready to start building (Step 1: Supabase schema), or would you like me to first create a refined implementation plan with the schema fixes and phased milestones?
