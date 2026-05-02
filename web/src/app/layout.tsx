@@ -32,6 +32,8 @@ const monoFont = DM_Mono({
   variable: "--font-mono",
 });
 
+import { ThemeProvider } from "@/components/ThemeProvider";
+
 /**
  * Global Metadata for SEO and Browser Branding.
  */
@@ -46,8 +48,6 @@ export const metadata: Metadata = {
  * @param {Object} props - Component properties.
  * @param {React.ReactNode} props.children - Child components to be rendered within the layout.
  * @returns {JSX.Element} The rendered root layout.
- * 
- * @note The 'dark' class is applied by default as this is a dark-mode-first application.
  */
 export default function RootLayout({
   children,
@@ -55,16 +55,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`dark ${displayFont.variable} ${bodyFont.variable} ${monoFont.variable}`} style={{ colorScheme: 'dark' }}>
-      <body className="antialiased selection:bg-saffron/30 font-body">
-        <TimerProvider>
-          {children}
-        </TimerProvider>
-        
-        {/* Global UI Components */}
-        <AssistantSidebar />
-        <AssistantToggle />
-        <Toaster position="bottom-right" richColors theme="dark" />
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${displayFont.variable} ${bodyFont.variable} ${monoFont.variable} antialiased selection:bg-saffron/30 font-body`}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <TimerProvider>
+            {children}
+          </TimerProvider>
+          
+          {/* Global UI Components */}
+          <AssistantSidebar />
+          <AssistantToggle />
+          <Toaster position="bottom-right" richColors />
+        </ThemeProvider>
       </body>
     </html>
   );

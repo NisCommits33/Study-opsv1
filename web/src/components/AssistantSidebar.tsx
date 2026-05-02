@@ -70,7 +70,7 @@ export function AssistantSidebar() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={toggleSidebar}
-            className="fixed inset-0 bg-navy/60 backdrop-blur-md z-40"
+            className="fixed inset-0 bg-background/60 backdrop-blur-md z-40"
           />
 
           <motion.div
@@ -78,16 +78,16 @@ export function AssistantSidebar() {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed right-0 top-0 h-full w-full max-w-md bg-navy-light border-l border-white/5 z-50 flex flex-col shadow-2xl"
+            className="fixed right-0 top-0 h-full w-full max-w-md bg-card border-l border-border z-50 flex flex-col shadow-2xl"
           >
             {/* Header */}
-            <div className="p-8 border-b border-white/5 flex items-center justify-between bg-navy-lighter/30">
+            <div className="p-8 border-b border-border flex items-center justify-between bg-muted/20">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-teal/10 flex items-center justify-center border border-teal/20">
                   <Bot className="w-6 h-6 text-teal" />
                 </div>
                 <div>
-                  <h3 className="font-display text-xl flex items-center gap-2 text-white">
+                  <h3 className="font-display text-xl flex items-center gap-2 text-foreground">
                     Study Assistant
                   </h3>
                   <p className="font-mono text-[9px] text-teal uppercase tracking-widest">Always active</p>
@@ -96,14 +96,14 @@ export function AssistantSidebar() {
               <div className="flex items-center gap-2">
                 <button 
                   onClick={clearChat}
-                  className="p-2.5 rounded-xl hover:bg-white/5 text-muted-foreground hover:text-rose transition-colors"
+                  className="p-2.5 rounded-xl hover:bg-muted text-muted-foreground hover:text-rose transition-colors"
                   title="Clear Chat"
                 >
                   <Trash2 className="w-5 h-5" />
                 </button>
                 <button 
                   onClick={toggleSidebar}
-                  className="p-2.5 rounded-xl hover:bg-white/5 text-white transition-colors"
+                  className="p-2.5 rounded-xl hover:bg-muted text-foreground transition-colors"
                 >
                   <X className="w-6 h-6" />
                 </button>
@@ -117,10 +117,10 @@ export function AssistantSidebar() {
             >
               {messages.length === 0 && (
                 <div className="h-full flex flex-col items-center justify-center text-center space-y-6 opacity-30">
-                  <div className="w-20 h-20 rounded-full border-2 border-dashed border-white/20 flex items-center justify-center">
+                  <div className="w-20 h-20 rounded-full border-2 border-dashed border-border flex items-center justify-center">
                     <Sparkles className="w-10 h-10" />
                   </div>
-                  <p className="text-sm font-display max-w-[220px]">
+                  <p className="text-sm font-display max-w-[220px] text-foreground">
                     Ask me about your shifts, subjects, or study plans.
                   </p>
                 </div>
@@ -138,15 +138,15 @@ export function AssistantSidebar() {
                 >
                   <div className={cn(
                     "font-mono text-[9px] uppercase tracking-widest",
-                    msg.role === 'user' ? "text-saffron opacity-60" : "text-teal opacity-60"
+                    msg.role === 'user' ? "text-primary opacity-60" : "text-teal opacity-60"
                   )}>
                     {msg.role === 'user' ? 'Scholar' : 'StudyOps AI'} · {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </div>
                   <div className={cn(
                     "p-4 text-sm leading-relaxed",
                     msg.role === 'user' 
-                      ? "bg-saffron/10 text-saffron border border-saffron/20 rounded-2xl rounded-tr-none" 
-                      : "bg-navy-lighter border border-white/10 text-white rounded-2xl rounded-tl-none border-l-2 border-l-teal"
+                      ? "bg-primary/10 text-primary border border-primary/20 rounded-2xl rounded-tr-none" 
+                      : "bg-muted/30 border border-border text-foreground rounded-2xl rounded-tl-none border-l-2 border-l-teal"
                   )}>
                     {msg.content}
                   </div>
@@ -156,13 +156,13 @@ export function AssistantSidebar() {
               {isLoading && (
                 <div className="flex flex-col gap-2 mr-auto items-start w-3/4">
                   <div className="font-mono text-[9px] text-teal opacity-60 uppercase tracking-widest animate-pulse">Thinking...</div>
-                  <Skeleton className="h-24 w-full rounded-2xl rounded-tl-none" />
+                  <Skeleton className="h-24 w-full rounded-2xl rounded-tl-none bg-muted/20" />
                 </div>
               )}
             </div>
 
             {/* Input Area */}
-            <div className="p-8 bg-navy-lighter/20 border-t border-white/5">
+            <div className="p-8 bg-muted/10 border-t border-border">
               <div className="relative flex items-center gap-3">
                 <input
                   type="text"
@@ -170,12 +170,12 @@ export function AssistantSidebar() {
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                   placeholder="Type your question..."
-                  className="w-full bg-navy-light border border-white/10 p-4 pr-14 rounded-2xl focus:ring-2 focus:ring-teal outline-none transition-all placeholder:text-muted-foreground/30 text-sm"
+                  className="w-full bg-background border border-border p-4 pr-14 rounded-2xl focus:ring-2 focus:ring-teal outline-none transition-all placeholder:text-muted-foreground/50 text-sm text-foreground"
                 />
                 <button
                   onClick={handleSend}
                   disabled={!input.trim() || isLoading}
-                  className="absolute right-2 p-2.5 bg-teal text-navy rounded-xl hover:opacity-90 disabled:opacity-30 transition-all shadow-lg shadow-teal/10"
+                  className="absolute right-2 p-2.5 bg-teal text-background rounded-xl hover:opacity-90 disabled:opacity-30 transition-all shadow-lg shadow-teal/10"
                 >
                   <Send className="w-5 h-5" />
                 </button>

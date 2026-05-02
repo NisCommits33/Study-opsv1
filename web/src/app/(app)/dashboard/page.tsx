@@ -73,7 +73,7 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="p-10 space-y-10">
+      <div className="p-10 space-y-10 bg-background h-screen">
         <div className="flex justify-between items-end">
           <div className="space-y-2">
             <Skeleton className="h-4 w-32" />
@@ -95,20 +95,20 @@ export default function Dashboard() {
   const freeWindows = currentShift ? getFreeWindows(currentShift) : []
 
   return (
-    <main className="p-10 max-w-7xl mx-auto space-y-10 pb-24">
+    <main className="p-10 max-w-7xl mx-auto space-y-10 pb-24 text-foreground bg-background">
       {/* Header Section */}
       <section className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="space-y-1">
           <div className="font-mono text-[10px] text-muted-foreground tracking-[0.2em] uppercase">
             Overview · {formatNepaliDate(new Date())}
           </div>
-          <h1 className="text-4xl font-display text-white">
-            Hi, <span className="text-saffron">{profile?.full_name?.split(' ')[0] || 'Scholar'}</span>
+          <h1 className="text-4xl font-display text-foreground">
+            Hi, <span className="text-primary">{profile?.full_name?.split(' ')[0] || 'Scholar'}</span>
           </h1>
         </div>
         
         {/* Mood Selector from Design System */}
-        <div className="flex gap-2 bg-navy-light/50 p-1.5 rounded-2xl border border-white/5">
+        <div className="flex gap-2 bg-muted/50 p-1.5 rounded-2xl border border-border">
           {[
             { id: 'focused', emoji: '⚡', label: 'FOCUSED' },
             { id: 'okay', emoji: '😐', label: 'OKAY' },
@@ -120,8 +120,8 @@ export default function Dashboard() {
               className={cn(
                 "flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all border border-transparent",
                 mood === m.id 
-                  ? "bg-saffron/10 border-saffron/20" 
-                  : "hover:bg-white/5"
+                  ? "bg-primary/10 border-primary/20" 
+                  : "hover:bg-muted"
               )}
             >
               <span className="text-lg">{m.emoji}</span>
@@ -155,21 +155,21 @@ export default function Dashboard() {
           label="Days to exam" 
           value="27" 
           sub="Big Data · May 29" 
-          color="text-saffron" 
+          color="text-primary" 
         />
       </section>
 
       {/* Main Focus Area */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Today's Plan */}
-        <div className="lg:col-span-2 glass rounded-[2.5rem] p-10 space-y-8 relative overflow-hidden group">
+        <div className="lg:col-span-2 bg-card border border-border rounded-[2.5rem] p-10 space-y-8 relative overflow-hidden group shadow-sm">
           <div className="absolute top-0 right-0 p-10 opacity-5 group-hover:opacity-10 transition-opacity">
-            <Sparkles className="w-32 h-32 text-saffron" />
+            <Sparkles className="w-32 h-32 text-primary" />
           </div>
           
           <div className="flex items-center justify-between relative z-10">
-            <h2 className="text-2xl font-display flex items-center gap-3">
-              <Target className="w-6 h-6 text-saffron" />
+            <h2 className="text-2xl font-display flex items-center gap-3 text-foreground">
+              <Target className="w-6 h-6 text-primary" />
               Today's Focus Plan
             </h2>
             <div className="flex items-center gap-4">
@@ -177,7 +177,7 @@ export default function Dashboard() {
                 <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">STUDY RISK</div>
                 <div className="text-sm font-bold text-rose">HIGH</div>
               </div>
-              <div className="w-12 h-1.5 bg-white/5 rounded-full overflow-hidden">
+              <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden">
                 <div className="w-4/5 h-full bg-rose shadow-[0_0_10px_#F45E6B]" />
               </div>
             </div>
@@ -205,7 +205,7 @@ export default function Dashboard() {
           </div>
 
           <div className="pt-6 relative z-10">
-            <button className="w-full py-4 bg-saffron text-navy font-bold rounded-2xl shadow-xl shadow-saffron/10 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+            <button className="w-full py-4 bg-primary text-primary-foreground font-bold rounded-2xl shadow-xl shadow-primary/10 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
               Start Focused Session <ChevronRight className="w-5 h-5" />
             </button>
           </div>
@@ -213,28 +213,28 @@ export default function Dashboard() {
 
         {/* AI Insight Sidebar */}
         <div className="space-y-6">
-          <div className="card-accent p-8 space-y-4">
-            <div className="font-mono text-[9px] text-muted-foreground tracking-widest">AI INSIGHT</div>
+          <div className="bg-primary/10 border border-primary/20 p-8 rounded-3xl space-y-4 shadow-sm">
+            <div className="font-mono text-[9px] text-primary tracking-widest uppercase">AI INSIGHT</div>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              You're on a <span className="text-white font-bold">morning shift</span> today. Your free window is <span className="text-saffron font-bold">2:00–4:30 PM</span>. I've scheduled HDFS replication first — it's your highest weak spot.
+              You're on a <span className="text-foreground font-bold">morning shift</span> today. Your free window is <span className="text-primary font-bold">2:00–4:30 PM</span>. I've scheduled HDFS replication first — it's your highest weak spot.
             </p>
           </div>
           
-          <div className="glass rounded-3xl p-6 space-y-4">
-            <h3 className="font-display text-lg">Next Deadline</h3>
+          <div className="bg-card border border-border rounded-3xl p-6 space-y-4 shadow-sm">
+            <h3 className="font-display text-lg text-foreground">Next Deadline</h3>
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-rose/10 flex flex-col items-center justify-center text-rose">
+              <div className="w-12 h-12 rounded-2xl bg-rose/10 flex flex-col items-center justify-center text-rose border border-rose/20">
                 <span className="text-xl font-display leading-none">3</span>
                 <span className="text-[8px] font-mono font-bold">DAYS</span>
               </div>
               <div className="flex-1 overflow-hidden">
-                <div className="text-sm font-bold truncate">Big Data Viva</div>
+                <div className="text-sm font-bold truncate text-foreground">Big Data Viva</div>
                 <div className="text-[10px] text-muted-foreground uppercase tracking-tighter">Mon May 5 · High Priority</div>
               </div>
             </div>
           </div>
 
-          <button className="w-full p-4 border border-white/5 bg-white/5 rounded-2xl flex items-center justify-center gap-2 text-xs font-bold hover:bg-white/10 transition-all uppercase tracking-widest">
+          <button className="w-full p-4 border border-border bg-muted/20 rounded-2xl flex items-center justify-center gap-2 text-xs font-bold hover:bg-muted/40 transition-all uppercase tracking-widest text-foreground">
             <Plus className="w-4 h-4" /> Quick Capture
           </button>
         </div>
@@ -250,13 +250,13 @@ function StatCard({ label, value, sub, accent, color, icon }: any) {
   return (
     <motion.div 
       whileHover={{ y: -5 }}
-      className="bg-navy-light border border-white/5 p-6 rounded-[20px] space-y-2 shadow-lg"
+      className="bg-card border border-border p-6 rounded-[20px] space-y-2 shadow-sm"
     >
       <div className="flex items-center justify-between">
         <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">{label}</span>
         {icon && <div className="text-muted-foreground opacity-50">{icon}</div>}
       </div>
-      <div className={cn("text-3xl font-display", accent ? "text-saffron" : color || "text-white")}>
+      <div className={cn("text-3xl font-display", accent ? "text-primary" : color || "text-foreground")}>
         {value}
       </div>
       <div className="text-[10px] text-muted-foreground uppercase tracking-tighter">{sub}</div>
@@ -272,23 +272,23 @@ function PlanItem({ id, title, sub, status }: any) {
     <div className={cn(
       "p-5 rounded-2xl border flex items-center justify-between group cursor-pointer transition-all",
       status === 'current' 
-        ? "bg-saffron/10 border-saffron/20 shadow-[0_0_20px_rgba(244,161,24,0.05)]" 
-        : "bg-white/5 border-white/5 hover:border-white/10"
+        ? "bg-primary/10 border-primary/20 shadow-[0_0_20px_rgba(244,161,24,0.05)]" 
+        : "bg-muted/20 border-border hover:border-primary/20"
     )}>
       <div className="flex items-center gap-5">
         <div className={cn(
           "w-12 h-12 rounded-xl flex items-center justify-center font-display text-lg",
-          status === 'current' ? "bg-saffron text-navy" : "bg-navy-lighter text-muted-foreground"
+          status === 'current' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
         )}>
           {id}
         </div>
         <div>
-          <div className={cn("font-bold", status === 'current' ? "text-white" : "text-muted-foreground")}>{title}</div>
+          <div className={cn("font-bold", status === 'current' ? "text-foreground" : "text-muted-foreground")}>{title}</div>
           <div className="text-xs text-muted-foreground mt-0.5">{sub}</div>
         </div>
       </div>
       {status === 'current' && (
-        <div className="w-2 h-2 rounded-full bg-saffron animate-pulse shadow-[0_0_10px_#F4A118]" />
+        <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_10px_#F4A118]" />
       )}
     </div>
   )
