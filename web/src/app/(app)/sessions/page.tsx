@@ -11,13 +11,14 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { motion } from 'framer-motion'
-import { TrendingUp, History, BookOpen, CheckCircle2 } from 'lucide-react'
+import { TrendingUp, History, BookOpen, CheckCircle2, LayoutGrid, List } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export default function Sessions() {
   const [loading, setLoading] = useState(true)
   const [sessions, setSessions] = useState<any[]>([])
   const [heatmapData, setHeatmapData] = useState<Record<string, number>>({})
+  const [view, setView] = useState<'grid' | 'list'>('list')
 
   useEffect(() => {
     fetchSessions()
@@ -162,35 +163,92 @@ export default function Sessions() {
 
       {/* History List */}
       <section className="space-y-6">
-        <h2 className="text-2xl font-display">Session History</h2>
-        <div className="space-y-4">
-          {sessions.map((s) => (
-            <motion.div 
-              key={s.id}
-              initial={{ opacity: 0, x: -10 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              className="bg-navy-light border border-white/5 p-6 rounded-3xl flex items-center justify-between group hover:border-white/10 transition-all"
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-display">Session History</h2>
+          <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 scale-90">
+            <button 
+              onClick={() => setView('grid')}
+              className={cn("p-2 rounded-lg transition-all", view === 'grid' ? "bg-saffron text-navy shadow-lg" : "text-muted-foreground hover:text-white")}
             >
-              <div className="flex items-center gap-5">
-                <div className="w-12 h-12 rounded-2xl bg-navy-lighter flex items-center justify-center">
-                  <BookOpen className="w-6 h-6 text-muted-foreground group-hover:text-saffron transition-colors" />
-                </div>
-                <div>
-                  <div className="font-bold text-lg">{s.subjects?.name || 'Subject'}</div>
-                  <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mt-1">
-                    {new Date(s.created_at).toLocaleDateString()} · {s.duration_minutes} MINS
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={() => setView('list')}
+              className={cn("p-2 rounded-lg transition-all", view === 'list' ? "bg-saffron text-navy shadow-lg" : "text-muted-foreground hover:text-white")}
+            >
+              <List className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+        
+        <div className="space-y-4">
+          {view === 'list' ? (
+            <div className="space-y-4">
+              {sessions.map((s) => (
+                <motion.div 
+                  key={s.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  className="bg-navy-light border border-white/5 p-6 rounded-3xl flex items-center justify-between group hover:border-white/10 transition-all"
+                >
+                  <div className="flex items-center gap-5">
+                    <div className="w-12 h-12 rounded-2xl bg-navy-lighter flex items-center justify-center">
+                      <BookOpen className="w-6 h-6 text-muted-foreground group-hover:text-saffron transition-colors" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-lg">{s.subjects?.name || 'Subject'}</div>
+                      <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mt-1">
+                        {new Date(s.created_at).toLocaleDateString()} · {s.duration_minutes} MINS
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-6">
-                <div className="text-right">
-                  <div className="text-2xl font-display text-saffron">{s.efficiency_score}%</div>
-                  <div className="font-mono text-[8px] text-muted-foreground tracking-widest">EFFICIENCY</div>
-                </div>
-                <CheckCircle2 className="w-6 h-6 text-green opacity-40" />
-              </div>
-            </motion.div>
-          ))}
+                  <div className="flex items-center gap-6">
+                    <div className="text-right">
+                      <div className="text-2xl font-display text-saffron">{s.efficiency_score}%</div>
+                      <div className="font-mono text-[8px] text-muted-foreground tracking-widest">EFFICIENCY</div>
+                    </div>
+                    <CheckCircle2 className="w-6 h-6 text-green opacity-40" />
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {sessions.map((s) => (
+                <motion.div 
+                  key={s.id}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  className="bg-navy-light border border-white/5 p-8 rounded-[2.5rem] space-y-6 group hover:border-white/10 transition-all relative overflow-hidden"
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="w-12 h-12 rounded-2xl bg-saffron/10 flex items-center justify-center">
+                      <BookOpen className="w-6 h-6 text-saffron" />
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-bold text-white/40 font-mono tracking-widest uppercase">Score</div>
+                      <div className="text-2xl font-display text-saffron">{s.efficiency_score}%</div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h3 className="font-bold text-xl group-hover:text-white transition-colors">{s.subjects?.name || 'Subject'}</h3>
+                    <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest mt-2">
+                      {new Date(s.created_at).toLocaleDateString()}
+                    </div>
+                  </div>
+
+                  <div className="pt-6 border-t border-white/5 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-saffron" />
+                      <span className="text-[10px] font-bold uppercase tracking-widest">{s.duration_minutes} Mins</span>
+                    </div>
+                    <CheckCircle2 className="w-4 h-4 text-green opacity-40" />
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
     </main>

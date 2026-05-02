@@ -11,7 +11,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, CheckCircle2, Trash2, AlertCircle } from 'lucide-react'
+import { Plus, CheckCircle2, Trash2, AlertCircle, LayoutGrid, List } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type Deadline = {
@@ -26,6 +26,7 @@ export default function Deadlines() {
   const [loading, setLoading] = useState(true)
   const [deadlines, setDeadlines] = useState<Deadline[]>([])
   const [showAdd, setShowAdd] = useState(false)
+  const [view, setView] = useState<'grid' | 'list'>('list')
   
   const [newTitle, setNewTitle] = useState('')
   const [newDate, setNewDate] = useState('')
@@ -104,12 +105,28 @@ export default function Deadlines() {
           <h1 className="text-4xl font-display text-white">Deadlines</h1>
           <p className="text-muted-foreground mt-1">Don't let them sneak up on you.</p>
         </div>
-        <button 
-          onClick={() => setShowAdd(true)}
-          className="flex items-center gap-2 px-6 py-3 bg-saffron text-navy rounded-xl font-bold shadow-lg hover:scale-105 active:scale-95 transition-all"
-        >
-          <Plus className="w-5 h-5" /> Add New
-        </button>
+        <div className="flex items-center gap-4">
+          <div className="flex bg-white/5 p-1 rounded-xl border border-white/5">
+            <button 
+              onClick={() => setView('grid')}
+              className={cn("p-2 rounded-lg transition-all", view === 'grid' ? "bg-saffron text-navy shadow-lg" : "text-muted-foreground hover:text-white")}
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={() => setView('list')}
+              className={cn("p-2 rounded-lg transition-all", view === 'list' ? "bg-saffron text-navy shadow-lg" : "text-muted-foreground hover:text-white")}
+            >
+              <List className="w-4 h-4" />
+            </button>
+          </div>
+          <button 
+            onClick={() => setShowAdd(true)}
+            className="flex items-center gap-2 px-6 py-3 bg-saffron text-navy rounded-xl font-bold shadow-lg hover:scale-105 active:scale-95 transition-all"
+          >
+            <Plus className="w-5 h-5" /> Add New
+          </button>
+        </div>
       </header>
 
       {/* Add Modal Placeholder */}
@@ -172,73 +189,142 @@ export default function Deadlines() {
         )}
       </AnimatePresence>
 
-      {/* List of Deadlines from Design System */}
-      <section className="space-y-4">
-        {deadlines.length === 0 && (
+      {/* Display of Deadlines */}
+      <section>
+        {deadlines.length === 0 ? (
           <div className="py-20 text-center opacity-30 space-y-4">
             <AlertCircle className="w-12 h-12 mx-auto" />
             <p className="text-lg font-display">No active deadlines. Stay chill or add one!</p>
           </div>
-        )}
-        
-        {deadlines.map((dl) => {
-          const days = getDaysRemaining(dl.deadline_date)
-          const isOverdue = days !== null && days < 0
-          const isImminent = days !== null && days >= 0 && days <= 7
+        ) : (
+          view === 'list' ? (
+            <div className="space-y-4">
+              {deadlines.map((dl) => {
+                const days = getDaysRemaining(dl.deadline_date)
+                const isOverdue = days !== null && days < 0
+                const isImminent = days !== null && days >= 0 && days <= 7
 
-          return (
-            <motion.div 
-              layout
-              key={dl.id}
-              className={cn(
-                "bg-navy-light border border-white/5 rounded-2xl p-5 flex items-center gap-6 group relative overflow-hidden transition-all hover:border-white/10",
-                dl.status === 'completed' && "opacity-50"
-              )}
-            >
-              <div className="flex flex-col items-center justify-center min-w-[60px]">
-                <div className={cn(
-                  "text-3xl font-display leading-none",
-                  dl.status === 'completed' ? "text-green" : isImminent ? "text-rose" : "text-saffron"
-                )}>
-                  {dl.is_tbd ? 'TBD' : isOverdue ? '!!' : days}
-                </div>
-                <div className="font-mono text-[9px] text-muted-foreground tracking-widest mt-1">DAYS</div>
-              </div>
+                return (
+                  <motion.div 
+                    layout
+                    key={dl.id}
+                    className={cn(
+                      "bg-navy-light border border-white/5 rounded-2xl p-5 flex items-center gap-6 group relative overflow-hidden transition-all hover:border-white/10",
+                      dl.status === 'completed' && "opacity-50"
+                    )}
+                  >
+                    <div className="flex flex-col items-center justify-center min-w-[60px]">
+                      <div className={cn(
+                        "text-3xl font-display leading-none",
+                        dl.status === 'completed' ? "text-green" : isImminent ? "text-rose" : "text-saffron"
+                      )}>
+                        {dl.is_tbd ? 'TBD' : isOverdue ? '!!' : days}
+                      </div>
+                      <div className="font-mono text-[9px] text-muted-foreground tracking-widest mt-1">DAYS</div>
+                    </div>
 
-              <div className="h-10 w-[1px] bg-white/10" />
+                    <div className="h-10 w-[1px] bg-white/10" />
 
-              <div className="flex-1">
-                <h3 className={cn(
-                  "font-bold text-lg",
-                  dl.status === 'completed' && "line-through text-muted-foreground"
-                )}>
-                  {dl.title}
-                </h3>
-                <p className="text-xs text-muted-foreground uppercase tracking-tighter mt-1">
-                  {dl.is_tbd ? 'Monitoring Date' : dl.deadline_date} · {dl.status === 'completed' ? 'Finished' : isImminent ? 'High Risk' : 'In Preparation'}
-                </p>
-              </div>
+                    <div className="flex-1">
+                      <h3 className={cn(
+                        "font-bold text-lg",
+                        dl.status === 'completed' && "line-through text-muted-foreground"
+                      )}>
+                        {dl.title}
+                      </h3>
+                      <p className="text-xs text-muted-foreground uppercase tracking-tighter mt-1">
+                        {dl.is_tbd ? 'Monitoring Date' : dl.deadline_date} · {dl.status === 'completed' ? 'Finished' : isImminent ? 'High Risk' : 'In Preparation'}
+                      </p>
+                    </div>
 
-              <div className="flex items-center gap-2">
-                {isImminent && dl.status === 'not_started' && (
-                  <span className="badge badge-rose text-[8px]">HIGH RISK</span>
-                )}
-                <button 
-                  onClick={() => toggleStatus(dl.id, dl.status)}
-                  className="p-3 hover:bg-white/5 rounded-xl transition-all"
-                >
-                  <CheckCircle2 className={cn("w-5 h-5", dl.status === 'completed' ? "text-green" : "text-muted-foreground")} />
-                </button>
-                <button 
-                  onClick={() => deleteDeadline(dl.id)}
-                  className="p-3 hover:bg-white/5 rounded-xl transition-all text-muted-foreground hover:text-rose"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
-              </div>
-            </motion.div>
+                    <div className="flex items-center gap-2">
+                      {isImminent && dl.status === 'not_started' && (
+                        <span className="badge badge-rose text-[8px]">HIGH RISK</span>
+                      )}
+                      <button 
+                        onClick={() => toggleStatus(dl.id, dl.status)}
+                        className="p-3 hover:bg-white/5 rounded-xl transition-all"
+                      >
+                        <CheckCircle2 className={cn("w-5 h-5", dl.status === 'completed' ? "text-green" : "text-muted-foreground")} />
+                      </button>
+                      <button 
+                        onClick={() => deleteDeadline(dl.id)}
+                        className="p-3 hover:bg-white/5 rounded-xl transition-all text-muted-foreground hover:text-rose"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </motion.div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {deadlines.map((dl) => {
+                const days = getDaysRemaining(dl.deadline_date)
+                const isOverdue = days !== null && days < 0
+                const isImminent = days !== null && days >= 0 && days <= 7
+
+                return (
+                  <motion.div 
+                    layout
+                    key={dl.id}
+                    className={cn(
+                      "bg-navy-light border border-white/5 rounded-3xl p-8 space-y-6 flex flex-col justify-between group relative overflow-hidden transition-all hover:border-white/10",
+                      dl.status === 'completed' && "opacity-50"
+                    )}
+                  >
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-start">
+                        <div className={cn(
+                          "w-12 h-12 rounded-2xl flex items-center justify-center font-display text-xl",
+                          dl.status === 'completed' ? "bg-green/10 text-green" : isImminent ? "bg-rose/10 text-rose" : "bg-saffron/10 text-saffron"
+                        )}>
+                          {dl.is_tbd ? '?' : isOverdue ? '!' : days}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button 
+                            onClick={() => toggleStatus(dl.id, dl.status)}
+                            className="p-2 hover:bg-white/5 rounded-lg transition-all"
+                          >
+                            <CheckCircle2 className={cn("w-4 h-4", dl.status === 'completed' ? "text-green" : "text-muted-foreground")} />
+                          </button>
+                          <button 
+                            onClick={() => deleteDeadline(dl.id)}
+                            className="p-2 hover:bg-white/5 rounded-lg transition-all text-muted-foreground hover:text-rose"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className={cn(
+                          "font-bold text-xl leading-tight min-h-[3.5rem] line-clamp-2",
+                          dl.status === 'completed' && "line-through text-muted-foreground"
+                        )}>
+                          {dl.title}
+                        </h3>
+                        <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest mt-4">
+                          {dl.is_tbd ? 'TBD' : dl.deadline_date}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="pt-4 border-t border-white/5 flex items-center justify-between">
+                      <span className={cn(
+                        "text-[9px] font-bold uppercase tracking-[0.2em]",
+                        dl.status === 'completed' ? "text-green" : isImminent ? "text-rose" : "text-saffron"
+                      )}>
+                        {dl.status === 'completed' ? 'Success' : isImminent ? 'High Alert' : 'Active'}
+                      </span>
+                      {isImminent && dl.status === 'not_started' && <div className="w-2 h-2 rounded-full bg-rose animate-pulse" />}
+                    </div>
+                  </motion.div>
+                )
+              })}
+            </div>
           )
-        })}
+        )}
       </section>
     </main>
   )
