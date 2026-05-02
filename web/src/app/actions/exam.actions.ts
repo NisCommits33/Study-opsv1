@@ -80,16 +80,19 @@ export async function extractChaptersAction(examId: string, storagePath: string)
       ${text.substring(0, 8000)} // Truncate to stay within context limits
     `
 
-    const aiResponse = await chatAction([{ role: 'user', content: prompt }], 'complex')
+    const aiResponse = await chatAction([{ role: 'user', content: prompt }], 'complex', true)
     
     let extractedData;
     try {
-      // Clean up the response if it contains markdown code blocks
-      const jsonStr = aiResponse.text.replace(/```json|```/g, '').trim()
+      // Find the first '{' and last '}' to extract JSON even if AI adds extra text
+      const start = aiResponse.text.indexOf('{')
+      const end = aiResponse.text.lastIndexOf('}')
+      if (start === -1 || end === -1) throw new Error("No JSON found")
+      const jsonStr = aiResponse.text.substring(start, end + 1)
       extractedData = JSON.parse(jsonStr)
     } catch (err) {
-      console.error("AI returned invalid JSON:", aiResponse.text)
-      throw new Error("AI failed to generate a valid chapter structure. Please try again.")
+      console.error("AI returned invalid JSON. Raw output:", aiResponse.text)
+      throw new Error("AI failed to generate a valid chapter structure. The response was not in the expected format.")
     }
 
     if (!extractedData.chapters || !Array.isArray(extractedData.chapters)) {
@@ -172,13 +175,17 @@ export async function extractChaptersFromTextAction(examId: string, text: string
       ${text.substring(0, 8000)}
     `
 
-    const aiResponse = await chatAction([{ role: 'user', content: prompt }], 'complex')
+    const aiResponse = await chatAction([{ role: 'user', content: prompt }], 'complex', true)
     
     let extractedData;
     try {
-      const jsonStr = aiResponse.text.replace(/```json|```/g, '').trim()
+      const start = aiResponse.text.indexOf('{')
+      const end = aiResponse.text.lastIndexOf('}')
+      if (start === -1 || end === -1) throw new Error("No JSON found")
+      const jsonStr = aiResponse.text.substring(start, end + 1)
       extractedData = JSON.parse(jsonStr)
     } catch (err) {
+      console.error("AI Chapter Extraction Error. Raw output:", aiResponse.text)
       throw new Error("AI failed to generate a valid chapter structure.")
     }
 
@@ -288,15 +295,18 @@ export async function ingestChapterContentAction(
       ${extractedText.substring(0, 10000)}
     `
 
-    const aiResponse = await chatAction([{ role: 'user', content: prompt }], 'complex')
+    const aiResponse = await chatAction([{ role: 'user', content: prompt }], 'complex', true)
     
     let formattedContent;
     try {
-      const jsonStr = aiResponse.text.replace(/```json|```/g, '').trim()
+      const start = aiResponse.text.indexOf('{')
+      const end = aiResponse.text.lastIndexOf('}')
+      if (start === -1 || end === -1) throw new Error("No JSON found")
+      const jsonStr = aiResponse.text.substring(start, end + 1)
       formattedContent = JSON.parse(jsonStr)
     } catch (err) {
-      console.error("AI Formatting Error:", aiResponse.text)
-      throw new Error("AI failed to format the documentation. Please try again.")
+      console.error("AI Formatting Error. Raw output:", aiResponse.text)
+      throw new Error("AI failed to format the documentation. The response was not in a valid format.")
     }
 
     // 3. Save to exam_notes

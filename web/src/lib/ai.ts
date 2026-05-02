@@ -69,18 +69,41 @@ function getAnthropic() {
 
 
 // ── Primary: Groq ──────────────────────────────────────────────────────────
-async function callGroq(messages: AIMessage[], model: string): Promise<string> {
+async function callGroq(messages: AIMessage[], model: string, jsonMode: boolean = false): Promise<string> {
   const client = getGroq()
   if (!client) throw new Error("Groq client not initialized")
-  const res = await client.chat.completions.create({ model, messages, max_tokens: 1000 })
+  
+  const options: any = { 
+    model, 
+    messages, 
+    max_tokens: 4096,
+    temperature: 0.1 
+  }
+
+  if (jsonMode) {
+    options.response_format = { type: 'json_object' }
+  }
+
+  const res = await client.chat.completions.create(options)
   return res.choices[0].message.content ?? ''
 }
 
 // ── Fallback 1: OpenAI ─────────────────────────────────────────────────────
-async function callOpenAI(messages: AIMessage[], model: string): Promise<string> {
+async function callOpenAI(messages: AIMessage[], model: string, jsonMode: boolean = false): Promise<string> {
   const client = getOpenAI()
   if (!client) throw new Error("OpenAI client not initialized")
-  const res = await client.chat.completions.create({ model, messages, max_tokens: 1000 })
+
+  const options: any = { 
+    model, 
+    messages, 
+    max_tokens: 4096 
+  }
+
+  if (jsonMode) {
+    options.response_format = { type: 'json_object' }
+  }
+
+  const res = await client.chat.completions.create(options)
   return res.choices[0].message.content ?? ''
 }
 
@@ -92,7 +115,7 @@ async function callClaude(messages: AIMessage[], model: string): Promise<string>
   const userMsgs = messages.filter(m => m.role !== 'system')
   const res = await client.messages.create({
     model,
-    max_tokens: 1000,
+    max_tokens: 4096,
     system,
     messages: userMsgs as any,
   })
@@ -102,15 +125,16 @@ async function callClaude(messages: AIMessage[], model: string): Promise<string>
 // ── Main export: aiChat() ──────────────────────────────────────────────────
 export async function aiChat(
   messages: AIMessage[],
-  complexity: 'simple' | 'complex' = 'complex'
+  complexity: 'simple' | 'complex' = 'complex',
+  jsonMode: boolean = false
 ): Promise<AIResponse> {
   const attempts: Array<() => Promise<AIResponse>> = [
     async () => ({
-      text: await callGroq(messages, MODELS.groq[complexity]),
+      text: await callGroq(messages, MODELS.groq[complexity], jsonMode),
       provider: 'groq', model: MODELS.groq[complexity], usedFallback: false,
     }),
     async () => ({
-      text: await callOpenAI(messages, MODELS.openai[complexity]),
+      text: await callOpenAI(messages, MODELS.openai[complexity], jsonMode),
       provider: 'openai', model: MODELS.openai[complexity], usedFallback: true,
     }),
     async () => ({
@@ -119,12 +143,12 @@ export async function aiChat(
     }),
   ]
 
+  let lastError: any = null
   for (const attempt of attempts) {
     try {
       return await attempt()
     } catch (err: any) {
-      // If the error is "client not initialized", it means the API key is missing.
-      // We skip this provider and try the next one.
+      lastError = err
       const isConfigError = err?.message?.includes("not initialized")
       const isRetryable = err?.status === 429 || err?.status === 503 || err?.code === 'ETIMEDOUT'
       
@@ -133,10 +157,11 @@ export async function aiChat(
         continue
       }
       
-      throw err // hard errors (auth, bad request) — don't retry
+      console.error(`[ai] hard error from provider:`, err?.message)
+      continue
     }
   }
-  throw new Error('All AI providers failed. Please try again later.')
+  throw new Error(`All AI providers failed. Last error: ${lastError?.message || 'Unknown error'}`)
 }
 
 // ── Transcription (Groq Whisper only — no fallback for voice) ─────────────

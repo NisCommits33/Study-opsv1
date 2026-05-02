@@ -49,11 +49,11 @@ export function AssistantSidebar() {
         timestamp: new Date().toISOString()
       }
       addMessage(assistantMessage)
-    } catch (error) {
+    } catch (error: any) {
       console.error('AI Error:', error)
       addMessage({
         role: 'assistant',
-        content: 'I encountered an error. Please try again.',
+        content: `Error: ${error.message || 'I encountered an unknown error. Please check your API keys or try again later.'}`,
         timestamp: new Date().toISOString()
       })
     } finally {

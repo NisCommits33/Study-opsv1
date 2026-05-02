@@ -20,12 +20,13 @@ import { aiChat as internalAiChat, AIMessage, AIResponse } from '@/lib/ai'
  */
 export async function chatAction(
   messages: any[],
-  complexity: 'simple' | 'complex' = 'complex'
+  complexity: 'simple' | 'complex' = 'complex',
+  jsonMode: boolean = false
 ): Promise<AIResponse> {
   try {
     // Sanitize messages to only include role and content (API requirement)
     const sanitizedMessages = messages.map(({ role, content }) => ({ role, content }))
-    return await internalAiChat(sanitizedMessages, complexity)
+    return await internalAiChat(sanitizedMessages, complexity, jsonMode)
   } catch (error: any) {
     console.error('AI Action Error:', error)
     throw new Error(error.message || 'AI request failed on server')
